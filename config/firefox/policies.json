@@ -1,0 +1,10 @@
+{
+  "policies": {
+    "Preferences": {
+      "full-screen-api.ignore-widgets": { "Value": true, "Status": "locked" },
+      "full-screen-api.transition-duration.enter": { "Value": "0 0", "Status": "locked" },
+      "full-screen-api.transition-duration.leave": { "Value": "0 0", "Status": "locked" },
+      "full-screen-api.warning.timeout": { "Value": 0, "Status": "locked" }
+    }
+  }
+}

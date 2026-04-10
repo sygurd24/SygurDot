@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=WhatsApp Web - Chrome
+Comment=WhatsApp Web App simulando Windows para Video Llamadas
+Exec=google-chrome --app=https://web.whatsapp.com/ --password-store=basic --user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+Terminal=false
+Type=Application
+Icon=whatsapp
+Categories=Network;InstantMessaging;

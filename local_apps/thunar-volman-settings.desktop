@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Removable Drives and Media
+Exec=thunar-volman-settings
+Icon=org.xfce.volman
+Type=Application
+NoDisplay=true

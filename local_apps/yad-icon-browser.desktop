@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Icon Browser
+Exec=yad-icon-browser
+Icon=yad
+Type=Application
+NoDisplay=true

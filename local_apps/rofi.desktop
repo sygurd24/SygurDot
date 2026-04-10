@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Rofi
+Exec=rofi -show
+Icon=rofi
+Type=Application
+NoDisplay=true

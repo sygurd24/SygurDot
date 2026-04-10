@@ -1,0 +1,40 @@
+/* Import main config to keep theme consistency */
+@import "config.rasi"
+
+configuration {
+    show-icons: true;
+    /* Important: Disable markup processing here if we escape in python, OR enable it if we send markup.
+       Since wrapper sends plain text (html escaped but no functional tags), keeping markup-rows off 
+       or on doesn't matter much, but 'markup-rows: true' allows us to use bold/colors later if needed.
+       For now, let's keep it simple. */
+}
+
+/* User liked "small images", so we revert to reasonably sized prompts, not fullscreen giants */
+window {
+    width: 600px;
+}
+
+listview {
+    /* Standard vertical list */
+    columns: 1;
+    lines: 10;
+    fixed-height: false;
+}
+
+element {
+    padding: 5px;
+    spacing: 10px;
+    orientation: horizontal;
+    children: [ element-icon, element-text ];
+}
+
+element-icon {
+    /* "Normal" size - inherit from theme or default (usually ~24px-32px) */
+    /* size: 80px;  <-- Removed to restore default */
+    horizontal-align: 0.5;
+}
+
+element-text {
+    vertical-align: 0.5;
+    text-color: inherit;
+}

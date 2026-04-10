@@ -1,0 +1,18 @@
+[Desktop Entry]
+Name=Flameshot
+GenericName=Screenshot Tool
+Comment=Powerful yet simple to use screenshot software.
+Keywords=flameshot;screenshot;capture;shutter;
+Exec=/usr/bin/flameshot gui
+Icon=flameshot
+Terminal=false
+Type=Application
+Categories=Graphics;Utility;
+StartupNotify=false
+X-DBUS-ServiceName=org.flameshot.Flameshot
+X-DBUS-StartupType=Unique
+Actions=Full;
+
+[Desktop Action Full]
+Name=Take Fullscreen Screenshot
+Exec=flameshot full

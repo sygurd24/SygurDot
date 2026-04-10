@@ -1,0 +1,259 @@
+#
+# wm independent hotkeys
+#
+
+# terminal emulator
+super + Return
+	kitty
+
+# program launcher
+super + space
+	"$HOME/.config/rofi/launcher.sh"
+
+# make sxhkd reload its configuration files:
+super + Escape
+	pkill -USR1 -x sxhkd
+
+# Browser Audio Control (Toggle Visibility)
+alt + Escape
+	"$HOME/.config/polybar/scripts/browser-control.sh" --toggle-visibility
+
+# Task Manager (btop)
+ctrl + shift + Escape
+	kitty -e btop
+
+#
+# bspwm hotkeys
+#
+
+# quit/restart bspwm
+super + alt + {q,r}
+	bspc {quit,wm -r}
+
+# close and kill
+super + {_,shift + }w
+	bspc node -{c,k}
+
+# alternate between the tiled and monocle layout
+super + m
+	bspc desktop -l next
+
+# send the newest marked node to the newest preselected node
+super + y
+	bspc node newest.marked.local -n newest.!automatic.local
+
+# swap the current node and the biggest window
+super + g
+	bspc node -s biggest.window
+
+#
+# state/flags
+#
+
+# set the window state
+super + {t,shift + t,s}
+	bspc node -t {tiled,pseudo_tiled,floating}
+
+# toggle fullscreen
+
+
+# set the node flags
+super + ctrl + {m,x,y,z}
+	bspc node -g {marked,locked,sticky,private}
+
+
+#
+# focus/swap
+#
+
+# focus the node in the given direction
+super + {h,j,k}
+	bspc node -f {west,south,north}
+
+# move the node in the given direction
+super + shift + {h,j}
+	bspc node -n {west,south}
+
+# move the node east
+super + shift + l
+	bspc node -n east
+
+# focus the node for the given path jump
+super + {p,b,comma,period}
+	bspc node -f @{parent,brother,first,second}
+
+# focus the next/previous window in the current desktop
+super + {_,shift + }c
+	bspc node -f {next,prev}.local.!hidden.window
+
+# focus the next/previous desktop in the current monitor
+super + bracket{left,right}
+	bspc desktop -f {prev,next}.local
+
+# focus the last node/desktop
+super + grave
+	bspc node -f last
+
+alt + Tab
+	"$HOME/.config/bspwm/scripts/desktop_cycle.sh"
+
+# focus the older or newer node in the focus history
+super + {o,i}
+	bspc wm -h off; \
+	bspc node {older,newer} -f; \
+	bspc wm -h on
+
+# focus or send to the given desktop
+super + {_,shift + }{1-9,0}
+	bspc {desktop -f,node -d} '^{1-9,10}'
+
+#
+# preselect
+#
+
+# preselect the direction
+super + ctrl + {h,j,k,l}
+	bspc node -p {west,south,north,east}
+
+# Move window (Grafting) - Super + Alt + Ctrl + Arrows
+super + alt + ctrl + {Left,Down,Up,Right}
+	bspc node -n {west,south,north,east}
+
+# cancel the preselection for the focused node
+super + ctrl + space
+	bspc node -p cancel
+
+# cancel the preselection for the focused desktop
+super + ctrl + shift + space
+	bspc query -N -d | xargs -I id -n 1 bspc node id -p cancel
+
+#
+# move/resize
+#
+
+# Redimensionar Ventana (Smart Resize)
+# Super + Alt + Shift + Flechas
+# Intenta mover el borde exterior; si falla (está en el borde), mueve el interior.
+super + alt + shift + {Left,Down,Up,Right}
+	bspc node -z {left -20 0 || bspc node -z right -20 0, \
+	              bottom 0 20 || bspc node -z top 0 20, \
+	              top 0 -20 || bspc node -z bottom 0 -20, \
+	              right 20 0 || bspc node -z left 20 0}
+
+# move a floating window
+super + shift + {Left,Down,Up,Right}
+	bspc node -v {-20 0,0 20,0 -20,20 0}
+
+# focus the node in the given direction (Standard Arrows)
+super + {Left,Down,Up,Right}
+	bspc node -f {west,south,north,east}
+
+# --- Aplicaciones ---
+
+# Explorador de Archivos (Thunar)
+super + e
+	thunar
+
+# Navegador Firefox
+super + f
+	firefox
+
+# Pantalla Completa (Toggle)
+super + alt + s
+	bspc node -t "~fullscreen"
+
+# Captura de pantalla (Maim / Copy on Release)
+# super + shift + s: Selector -> Clipboard (Windows-style)
+super + shift + s
+	"$HOME/.config/bspwm/scripts/screenshot_copy.sh"
+
+# Tecla ImprPant (PrintScreen)
+Print
+	flameshot gui
+
+
+
+#
+# Volumen / Audio
+#
+
+
+
+# Teclas Multimedia
+XF86AudioMute
+	"$HOME/.config/polybar/scripts/volume.sh" mute
+
+XF86AudioLowerVolume
+	"$HOME/.config/polybar/scripts/volume.sh" down
+
+XF86AudioRaiseVolume
+	"$HOME/.config/polybar/scripts/volume.sh" up
+
+# Brillo de pantalla
+XF86MonBrightnessDown
+	"$HOME/.config/polybar/scripts/brightness.sh" down
+
+XF86MonBrightnessUp
+	"$HOME/.config/polybar/scripts/brightness.sh" up
+
+# Bloquear Pantalla (Blur)
+super + l
+	"$HOME/.config/bspwm/scripts/lock.sh"
+
+# Menu de Apagado (Rofi)
+super + shift + BackSpace
+	"$HOME/.config/rofi/powermenu.sh"
+
+# Clipboard Manager (Greenclip)
+super + v
+	$HOME/.config/bspwm/scripts/greenclip_wrapper.sh
+
+# --- Connectivity Menus ---
+
+# Wi-Fi Menu (Super + Shift + N)
+super + shift + n
+	"$HOME/.config/polybar/scripts/rofi-wifi.py"
+
+# Bluetooth Menu (Super + Shift + B)
+super + shift + b
+	"$HOME/.config/polybar/scripts/rofi-bluetooth.sh"
+
+# Mic Apps Menu (Super + Shift + M)
+super + shift + m
+	"$HOME/.config/polybar/scripts/mic-apps.sh"
+
+# Battery Mode Menu (Super + Shift + P)
+super + shift + p
+	"$HOME/.config/polybar/scripts/rofi-battery-mode.py"
+
+# Task Manager (Super + Shift + K)
+super + shift + k
+	"$HOME/.config/polybar/scripts/rofi-task-manager.py"
+
+# --- Global Media Control (Browser) ---
+
+alt + space
+	"$HOME/.config/polybar/scripts/browser-control.sh" --play-pause
+
+alt + {Right,Up}
+	"$HOME/.config/polybar/scripts/browser-control.sh" --next
+
+alt + {Left,Down}
+	"$HOME/.config/polybar/scripts/browser-control.sh" --prev
+
+# Opacity Toggle (Super + Alt + O)
+super + alt + o
+	"$HOME/.config/bspwm/scripts/toggle_opacity.sh"
+
+# Fix Windows (Force visibility and restart Picom)
+super + alt + f
+	"$HOME/.config/bspwm/scripts/fix_windows.sh"
+
+
+# Menu de Configuracion General (Rofi)
+super + alt + space
+	"$HOME/dotfiles/config/rofi/scripts/config-menu.py"
+
+# Menu de Fecha (Rofi)
+super + shift + d
+	"$HOME/.config/polybar/scripts/rofi-date.py"

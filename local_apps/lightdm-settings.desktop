@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Login Window
+Exec=pkexec lightdm-settings
+Icon=lightdm-settings
+Type=Application
+NoDisplay=true

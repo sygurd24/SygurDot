@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Debian Reference
+Exec=debian-reference
+Icon=debian-reference
+Type=Application
+NoDisplay=true

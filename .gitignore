@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.log
+*.tmp
+.DS_Store
+
+# Ignore symlinked system state
+home/.local/share/fonts
+home/.local/share/recently-used.xbel
+home/.local/bin
+home/.local/share/gvfs-metadata/
+home/.local/share/applications/mimeinfo.cache
+GEMINI.md
+
+# Ignore local build folders
+xdna-build/
+
+# Ignore local system state and module configurations
+config/polybar/*.json

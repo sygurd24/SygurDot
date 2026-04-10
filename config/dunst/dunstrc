@@ -1,0 +1,50 @@
+[global]
+    font = JetBrainsMono Nerd Font Bold 10
+    allow_markup = yes
+    format = "<b>%s</b>\n%b"
+    sort = yes
+    indicate_hidden = yes
+    alignment = left
+    show_age_threshold = 60
+    word_wrap = yes
+    ignore_newline = no
+    stack_duplicates = true
+    hide_duplicate_count = false
+    notification_limit = 6
+
+    width = 320
+    height = 120
+    origin = bottom-right
+    offset = 12x12
+
+    padding = 12
+    horizontal_padding = 12
+    text_icon_padding = 8
+    frame_width = 2
+    separator_height = 1
+    corner_radius = 8
+
+    transparency = 10
+    idle_threshold = 120
+    line_height = 3
+
+    icon_position = left
+    max_icon_size = 48
+    icon_theme = Papirus-Dark
+    enable_recursive_icon_lookup = true
+
+[urgency_low]
+    background = "#2b2e37"
+    foreground = "#c0caf5"
+    frame_color = "#565f89"
+
+[urgency_normal]
+    background = "#2b2e37"
+    foreground = "#c0caf5"
+    frame_color = "#7aa2f7"
+
+[urgency_critical]
+    background = "#2b2e37"
+    foreground = "#f7768e"
+    frame_color = "#f7768e"
+    timeout = 0

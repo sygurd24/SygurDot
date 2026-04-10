@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Bulk Rename
+Exec=thunar --bulk-rename %F
+Icon=org.xfce.thunar
+Type=Application
+NoDisplay=true
