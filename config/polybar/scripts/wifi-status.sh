@@ -27,7 +27,7 @@ fi
 # 2. Check Connection
 # Format nmcli -t: active:signal
 # Force C locale so "yes" is stable; also accept localized "sí" just in case.
-active_info=$(LC_ALL=C nmcli -t -f active,signal dev wifi 2>/dev/null | grep -E '^(yes|sí):')
+active_info=$(LC_ALL=C nmcli -t -f active,signal dev wifi 2>/dev/null | grep -E '^(yes|sí):' | sort -t: -k2 -nr | head -n1)
 
 if [ -n "$active_info" ]; then
     signal=$(echo "$active_info" | cut -d: -f2)
