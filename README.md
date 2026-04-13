@@ -52,7 +52,7 @@ These tools are located in the `scripts/` directory and can be run manually:
 | `Print` | Flameshot (Full GUI) |
 | `Super + Escape` | Reload Shortcuts (sxhkd) |
 | `Super + Alt + R` | Restart bspwm |
-| `Super + L` | Lock Screen (Custom) |
+| `Super + BackSpace` | Lock Screen (Custom) |
 
 ## Menus & Control Shortcuts
 
@@ -72,12 +72,14 @@ These tools are located in the `scripts/` directory and can be run manually:
 
 | Shortcut | Action |
 |---|---|
-| `Super + Arrows` | Change Focus (West, South, North, East) |
+| `Super + Arrows / hjkl` | Change Focus (West, South, North, East) |
 | `Super + M` | Toggle between Tiled and Monocle Layout |
 | `Super + Alt + S` | Toggle Fullscreen |
 | `Super + Alt + O` | Toggle Transparency (85% / 100%) |
 | `Super + Alt + Shift + Arrows` | Resize Window (Smart Resize) |
 | `Super + {1-9, 0}` | Switch to Desktop |
 | `Super + Shift + {1-9, 0}` | Move Window to Desktop |
+| `Super + {F1-F12}` | Switch to Hidden Desktop |
+| `Super + Shift + {F1-F12}` | Move Window to Hidden Desktop |
 | `Super + W` | Close Focused Window |
 | `Super + Shift + W` | Kill Window |

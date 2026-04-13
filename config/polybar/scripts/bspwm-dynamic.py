@@ -114,6 +114,10 @@ def generate_polybar_string(dump):
         for desk in mon['desktops']:
             name = desk['name']
             
+            # Skip hidden desktops (F1-F12)
+            if name.startswith('F'):
+                continue
+            
             is_focused = (desk['id'] == focused_desktop_id) and (mon['id'] == dump['focusedMonitorId'])
             
             root = desk.get('root')

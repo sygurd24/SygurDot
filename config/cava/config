@@ -8,7 +8,7 @@ bar_width = 2
 bar_spacing = 1
 
 [input]
-source = alsa_output.pci-0000_05_00.6.HiFi__Speaker__sink.monitor
+source = auto_null.monitor
 method = pulse
 # source = auto
 

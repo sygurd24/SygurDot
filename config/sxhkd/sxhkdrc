@@ -67,28 +67,20 @@ super + ctrl + {m,x,y,z}
 #
 
 # focus the node in the given direction
-super + {h,j,k}
-	bspc node -f {west,south,north}
+super + {h,j,k,l}
+	bspc node -f {west,south,north,east}
 
 # move the node in the given direction
-super + shift + {h,j}
-	bspc node -n {west,south}
-
-# move the node east
-super + shift + l
-	bspc node -n east
-
-# focus the node for the given path jump
-super + {p,b,comma,period}
-	bspc node -f @{parent,brother,first,second}
+super + shift + {h,j,k,l}
+	bspc node -n {west,south,north,east}
 
 # focus the next/previous window in the current desktop
 super + {_,shift + }c
 	bspc node -f {next,prev}.local.!hidden.window
 
 # focus the next/previous desktop in the current monitor
-super + bracket{left,right}
-	bspc desktop -f {prev,next}.local
+super + {bracketleft,bracketright,o,i}
+	"$HOME/.config/bspwm/scripts/desktop_navigation.sh" {next,prev,next,prev}
 
 # focus the last node/desktop
 super + grave
@@ -97,15 +89,13 @@ super + grave
 alt + Tab
 	"$HOME/.config/bspwm/scripts/desktop_cycle.sh"
 
-# focus the older or newer node in the focus history
-super + {o,i}
-	bspc wm -h off; \
-	bspc node {older,newer} -f; \
-	bspc wm -h on
-
 # focus or send to the given desktop
 super + {_,shift + }{1-9,0}
 	bspc {desktop -f,node -d} '^{1-9,10}'
+
+# focus or send to the hidden desktops
+super + {_,shift + }{F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12}
+	bspc {desktop -f,node -d} '^{11,12,13,14,15,16,17,18,19,20,21,22}'
 
 #
 # preselect
@@ -197,12 +187,13 @@ XF86MonBrightnessUp
 	"$HOME/.config/polybar/scripts/brightness.sh" up
 
 # Bloquear Pantalla (Blur)
-super + l
+super + BackSpace
 	"$HOME/.config/bspwm/scripts/lock.sh"
 
 # Menu de Apagado (Rofi)
 super + shift + BackSpace
 	"$HOME/.config/rofi/powermenu.sh"
+
 
 # Clipboard Manager (Greenclip)
 super + v

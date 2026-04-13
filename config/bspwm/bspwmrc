@@ -50,7 +50,7 @@ pkill -x greenclip 2>/dev/null
 rm -f ~/.cache/greenclip.history
 "$HOME/.local/bin/greenclip" daemon &
 
-bspc monitor -d I II III IV V VI VII VIII IX X
+bspc monitor -d I II III IV V VI VII VIII IX X F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12
 
 bspc config border_width         2
 bspc config window_gap          12
