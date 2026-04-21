@@ -33,15 +33,21 @@ def get_current_lang():
     return sys_lang
 
 def get_current_layout():
+    kb_file = os.path.expanduser("~/.config/dotfiles/keyboard")
+    if os.path.exists(kb_file):
+        with open(kb_file, "r") as f:
+            saved = f.read().strip()
+            if saved: return saved
+
     layout = "us"
     variant = ""
     try:
         res = subprocess.run(["setxkbmap", "-query"], capture_output=True, text=True)
         for line in res.stdout.splitlines():
             if "layout:" in line:
-                layout = line.split(":")[1].strip()
+                layout = line.split(":")[1].strip().split(",")[0]
             elif "variant:" in line:
-                variant = line.split(":")[1].strip()
+                variant = line.split(":")[1].strip().split(",")[0]
     except:
         pass
     

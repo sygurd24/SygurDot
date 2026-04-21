@@ -20,3 +20,10 @@ xdna-build/
 
 # Ignore local system state and module configurations
 config/polybar/*.json
+
+# Personal file manager bookmarks
+config/gtk-3.0/bookmarks
+
+# Downloaded CLI binaries
+bin/claude
+bin/copilot
