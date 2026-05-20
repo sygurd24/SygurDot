@@ -110,3 +110,4 @@ bspc rule -a BrightnessSlider state=floating
 # Border animation
 pgrep -f border_animator.py && pkill -f border_animator.py
 "$HOME/.config/bspwm/scripts/border_animator.py" &
+systemctl --user import-environment DISPLAY XAUTHORITY && systemctl --user start opentabletdriver.service &

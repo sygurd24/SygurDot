@@ -315,25 +315,47 @@ def border_submenu():
             config["intensity"] = intensities[idx][0]
             save_config(config)
 
+    def speed_submenu(config):
+        speeds = [
+            ("fast", L({"es": "Rápida", "en": "Fast", "pt": "Rápida", "fr": "Rapide", "ru": "Быстро"})),
+            ("medium", L({"es": "Media", "en": "Medium", "pt": "Média", "fr": "Moyenne", "ru": "Средняя"})),
+            ("slow", L({"es": "Lenta", "en": "Slow", "pt": "Lenta", "fr": "Lente", "ru": "Медленно"}))
+        ]
+        while True:
+            current = config.get("speed", "medium")
+            options = [f"{ICON_CHECK if current == s[0] else '   '} {s[1]}" for s in speeds]
+            options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+            idx = show_rofi(L({"es": "Velocidad", "en": "Speed", "pt": "Velocidade", "fr": "Vitesse", "ru": "Скорость"}), options)
+            if idx == -1 or idx == len(options) - 1: break
+            config["speed"] = speeds[idx][0]
+            save_config(config)
+
     while True:
         config = load_config()
         enabled = config.get("enabled", True)
+        show_border = config.get("show_border", True)
         
         options = [
+            f"{ICON_CHECK if show_border else '   '} " + L({"es": "Mostrar marco de color", "en": "Show colored border", "pt": "Mostrar borda colorida", "fr": "Afficher bordure colorée", "ru": "Показывать цветную рамку"}),
             f"{ICON_CHECK if enabled else '   '} " + L({"es": "Animación activada", "en": "Animation enabled", "pt": "Animação ativada", "fr": "Animation activée", "ru": "Анимация включена"}),
             L({"es": "Seleccionar perfil de color", "en": "Select color profile", "pt": "Selecionar perfil de cor", "fr": "Sélectionner profil couleur", "ru": "Выбрать профиль цвета"}),
             L({"es": "Seleccionar intensidad", "en": "Select intensity", "pt": "Selecionar intensidade", "fr": "Sélectionner intensité", "ru": "Выбрать интенсивность"}),
+            L({"es": "Seleccionar velocidad", "en": "Select speed", "pt": "Selecionar velocidade", "fr": "Sélectionner vitesse", "ru": "Выбрать скорость"}),
             f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
         ]
         
         idx = show_rofi(L({"es": "Configuración Borde", "en": "Border Config", "pt": "Configuração Borda", "fr": "Config. Bordure", "ru": "Настройка рамки"}), options)
         
-        if idx == -1 or idx == 3: break
+        if idx == -1 or idx == 5: break
         elif idx == 0:
+            config["show_border"] = not show_border
+            save_config(config)
+        elif idx == 1:
             config["enabled"] = not enabled
             save_config(config)
-        elif idx == 1: profile_submenu(config)
-        elif idx == 2: intensity_submenu(config)
+        elif idx == 2: profile_submenu(config)
+        elif idx == 3: intensity_submenu(config)
+        elif idx == 4: speed_submenu(config)
 
 def bspwm_heatmap_submenu(config, save_config):
     variants = [
