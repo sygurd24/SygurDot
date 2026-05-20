@@ -22,6 +22,7 @@ ICON_FR = "󰗊 FR "
 ICON_RU = "󰗊 RU "
 ICON_POLYBAR = "󱓡 "
 ICON_TEMP = " "
+ICON_CURSOR = "󰆿 "
 
 
 def get_current_lang():
@@ -833,17 +834,126 @@ def date_submenu(enabled, all_modules):
             config["format"] = formats[idx-1][0]
             save_config(config)
 
+def get_current_cursor():
+    cursor_file = os.path.expanduser("~/.config/dotfiles/cursor")
+    if os.path.exists(cursor_file):
+        with open(cursor_file, "r") as f:
+            return f.read().strip()
+    return "Bibata-Modern-Ice"
+
+def set_cursor(cursor_theme):
+    # Save to dotfiles state
+    cursor_file = os.path.expanduser("~/.config/dotfiles/cursor")
+    os.makedirs(os.path.dirname(cursor_file), exist_ok=True)
+    with open(cursor_file, "w") as f:
+        f.write(cursor_theme)
+
+    # Update ~/.icons/default/index.theme
+    index_theme_dir = os.path.expanduser("~/.icons/default")
+    os.makedirs(index_theme_dir, exist_ok=True)
+    with open(os.path.join(index_theme_dir, "index.theme"), "w") as f:
+        f.write(f"[Icon Theme]\nInherits={cursor_theme}\n")
+
+    # Update ~/.config/gtk-3.0/settings.ini
+    gtk_settings = os.path.expanduser("~/.config/gtk-3.0/settings.ini")
+    if os.path.exists(gtk_settings):
+        with open(gtk_settings, "r") as f:
+            lines = f.readlines()
+        with open(gtk_settings, "w") as f:
+            for line in lines:
+                if line.startswith("gtk-cursor-theme-name"):
+                    f.write(f"gtk-cursor-theme-name={cursor_theme}\n")
+                else:
+                    f.write(line)
+    else:
+        os.makedirs(os.path.dirname(gtk_settings), exist_ok=True)
+        with open(gtk_settings, "w") as f:
+            f.write(f"[Settings]\ngtk-cursor-theme-name={cursor_theme}\n")
+
+    # Update ~/.Xresources
+    xresources = os.path.expanduser("~/.Xresources")
+    if os.path.exists(xresources):
+        with open(xresources, "r") as f:
+            lines = f.readlines()
+        with open(xresources, "w") as f:
+            found = False
+            for line in lines:
+                if line.startswith("Xcursor.theme:"):
+                    f.write(f"Xcursor.theme: {cursor_theme}\n")
+                    found = True
+                else:
+                    f.write(line)
+            if not found:
+                f.write(f"Xcursor.theme: {cursor_theme}\n")
+    else:
+        with open(xresources, "w") as f:
+            f.write(f"Xcursor.theme: {cursor_theme}\n")
+
+    # Apply
+    subprocess.run(["xrdb", "-merge", xresources])
+    subprocess.run(["xsetroot", "-cursor_name", "left_ptr"])
+
+    msg = L({
+        "es": f"Cursor cambiado a {cursor_theme}",
+        "en": f"Cursor changed to {cursor_theme}",
+        "pt": f"Cursor alterado para {cursor_theme}",
+        "fr": f"Curseur changé en {cursor_theme}",
+        "ru": f"Курсор изменен на {cursor_theme}"
+    })
+    subprocess.Popen(["notify-send", L({"es": "Sistema", "en": "System", "pt": "Sistema", "fr": "Système", "ru": "Система"}), msg, "-i", "input-mouse"])
+
+def cursor_submenu():
+    cursors = [
+        ("Bibata-Modern-Ice", "Bibata Modern Ice"),
+        ("Bibata-Modern-Classic", "Bibata Modern Classic"),
+        ("macOS-Monterey", "macOS Monterey"),
+        ("Nordzy-cursors", "Nordzy Cursors"),
+        ("breeze_cursors", "Breeze Snow"),
+        ("LyraB-cursors", "LyraB Cursors"),
+        ("WinSur-dark-cursors", "WinSur Dark Cursors")
+    ]
+    
+    while True:
+        current = get_current_cursor()
+        options = []
+        
+        # Add "Base/Default" option (Adwaita)
+        if current == "Adwaita":
+            options.append(f"{ICON_CHECK} Base (Adwaita)")
+        else:
+            options.append(f"   Base (Adwaita)")
+        
+        for code, name in cursors:
+            if current == code:
+                options.append(f"{ICON_CHECK} {name}")
+            else:
+                options.append(f"   {name}")
+        
+        options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+        
+        idx = show_rofi(L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"}), options)
+        
+        if idx == -1 or idx == len(options) - 1:
+            break
+        
+        if idx == 0:
+            set_cursor("Adwaita")
+        elif 0 < idx <= len(cursors):
+            set_cursor(cursors[idx-1][0])
+
 def main_menu():
     while True:
         lang_text = L({"es": "Idioma", "en": "Language", "pt": "Idioma", "fr": "Langue", "ru": "Язык"})
         kb_text = L({"es": "Teclado", "en": "Keyboard", "pt": "Teclado", "fr": "Clavier", "ru": "Клавиатура"})
         poly_text = L({"es": "Polybar", "en": "Polybar", "pt": "Polybar", "fr": "Polybar", "ru": "Polybar"})
+        cursor_text = L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"})
         config_text = L({"es": "Configuración", "en": "Configuration", "pt": "Configuração", "fr": "Configuration", "ru": "Настройка"})
         
         options = [
             f"{ICON_LANG} {lang_text}",
             f"{ICON_KB} {kb_text}",
-            f"{ICON_POLYBAR} {poly_text}"
+            f"{ICON_POLYBAR} {poly_text}",
+            f"{ICON_CURSOR} {cursor_text}"
         ]
         
         idx = show_rofi(config_text, options)
@@ -857,6 +967,8 @@ def main_menu():
             keyboard_menu()
         elif idx == 2:
             polybar_menu()
+        elif idx == 3:
+            cursor_submenu()
         else:
             break
 

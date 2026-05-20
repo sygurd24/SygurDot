@@ -782,6 +782,17 @@ if [ -d "$DOTFILES_DIR/fonts" ]; then
     fi
 fi
 
+fi
+
+if [ ! -d "$HOME/.icons/Nordzy-cursors" ]; then
+    log "Downloading Nordzy cursors..."
+    if getent hosts github.com > /dev/null 2>&1; then
+        wget -qO- https://github.com/guillaumeboehm/Nordzy-cursors/releases/download/v2.4.0/Nordzy-cursors.tar.gz | tar -xz -C "$HOME/.icons/" || warn "Failed to extract Nordzy-cursors"
+    else
+        warn "DNS/network unavailable for github.com. Skipping Nordzy-cursors."
+    fi
+fi
+
 log "Installation complete!"
 warn "A REBOOT IS STRONGLY RECOMMENDED to apply kernel modules, drivers, and system-wide changes."
 log "To start the graphical session after reboot: startx"
