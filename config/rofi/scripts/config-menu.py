@@ -23,6 +23,7 @@ ICON_RU = "󰗊 RU "
 ICON_POLYBAR = "󱓡 "
 ICON_TEMP = " "
 ICON_CURSOR = "󰆿 "
+ICON_WALLPAPER = "󰸉 "
 
 
 def get_current_lang():
@@ -941,19 +942,76 @@ def cursor_submenu():
         elif 0 < idx <= len(cursors):
             set_cursor(cursors[idx-1][0])
 
+def wallpaper_menu():
+    mode_file = os.path.expanduser("~/.config/dotfiles/wallpaper_mode")
+    custom_file = os.path.expanduser("~/.config/dotfiles/custom_wallpaper_path")
+    
+    while True:
+        current_mode = "dynamic"
+        if os.path.exists(mode_file):
+            with open(mode_file, "r") as f:
+                current_mode = f.read().strip()
+                
+        dynamic_lbl = L({"es": "Modo Dinámico (Por hora)", "en": "Dynamic Mode (Time of day)", "pt": "Modo Dinâmico (Por hora)", "fr": "Mode Dynamique (Par heure)", "ru": "Динамический режим (По времени)"})
+        custom_lbl = L({"es": "Elegir Wallpaper...", "en": "Choose Wallpaper...", "pt": "Escolher Wallpaper...", "fr": "Choisir Fond d'écran...", "ru": "Выбрать обои..."})
+        
+        options = [
+            f"{ICON_CHECK if current_mode == 'dynamic' else '   '} {dynamic_lbl}",
+            f"{ICON_CHECK if current_mode == 'custom' else '   '} {custom_lbl}",
+            f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
+        ]
+        
+        title = L({"es": "Fondo de Pantalla", "en": "Wallpaper", "pt": "Papel de Parede", "fr": "Fond d'écran", "ru": "Обои"})
+        idx = show_rofi(title, options)
+        
+        if idx == -1 or idx == len(options) - 1:
+            break
+            
+        os.makedirs(os.path.dirname(mode_file), exist_ok=True)
+        if idx == 0:
+            with open(mode_file, "w") as f: f.write("dynamic")
+            subprocess.run(["pkill", "-USR1", "-f", "dynamic_wallpaper.sh"])
+        elif idx == 1:
+            wp_dir = os.path.expanduser("~/Pictures/Wallpapers")
+            if os.path.exists(wp_dir):
+                images = sorted([f for f in os.listdir(wp_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+                while True:
+                    current_custom = ""
+                    if os.path.exists(custom_file):
+                        with open(custom_file, "r") as f:
+                            current_custom = f.read().strip()
+                    
+                    img_options = []
+                    for img in images:
+                        is_active = current_custom == os.path.join(wp_dir, img)
+                        img_options.append(f"{ICON_CHECK if is_active else '   '} {img}")
+                    
+                    img_options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+                    
+                    img_idx = show_rofi("Select Image", img_options)
+                    if img_idx == -1 or img_idx == len(images):
+                        break
+                    
+                    selected_path = os.path.join(wp_dir, images[img_idx])
+                    with open(custom_file, "w") as f: f.write(selected_path)
+                    with open(mode_file, "w") as f: f.write("custom")
+                    subprocess.run(["pkill", "-USR1", "-f", "dynamic_wallpaper.sh"])
+
 def main_menu():
     while True:
         lang_text = L({"es": "Idioma", "en": "Language", "pt": "Idioma", "fr": "Langue", "ru": "Язык"})
         kb_text = L({"es": "Teclado", "en": "Keyboard", "pt": "Teclado", "fr": "Clavier", "ru": "Клавиатура"})
         poly_text = L({"es": "Polybar", "en": "Polybar", "pt": "Polybar", "fr": "Polybar", "ru": "Polybar"})
         cursor_text = L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"})
+        wallpaper_text = L({"es": "Fondo", "en": "Wallpaper", "pt": "Papel de Parede", "fr": "Fond d'écran", "ru": "Обои"})
         config_text = L({"es": "Configuración", "en": "Configuration", "pt": "Configuração", "fr": "Configuration", "ru": "Настройка"})
         
         options = [
             f"{ICON_LANG} {lang_text}",
             f"{ICON_KB} {kb_text}",
             f"{ICON_POLYBAR} {poly_text}",
-            f"{ICON_CURSOR} {cursor_text}"
+            f"{ICON_CURSOR} {cursor_text}",
+            f"{ICON_WALLPAPER} {wallpaper_text}"
         ]
         
         idx = show_rofi(config_text, options)
@@ -969,6 +1027,8 @@ def main_menu():
             polybar_menu()
         elif idx == 3:
             cursor_submenu()
+        elif idx == 4:
+            wallpaper_menu()
         else:
             break
 
