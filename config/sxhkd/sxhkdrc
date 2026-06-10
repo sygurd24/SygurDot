@@ -157,6 +157,10 @@ super + alt + s
 super + shift + s
 	"$HOME/.config/bspwm/scripts/screenshot_copy.sh"
 
+# Captura de pantalla (Flameshot)
+super + shift + f
+	flameshot gui
+
 # Tecla ImprPant (PrintScreen)
 Print
 	flameshot gui

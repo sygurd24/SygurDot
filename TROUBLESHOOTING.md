@@ -1,112 +1,114 @@
-# Registro de Resolución de Problemas y Bugs Conocidos (Troubleshooting)
+# Error Log (Troubleshooting)
 
-Este documento registra los bloqueos más complejos encontrados en el desarrollo de **SygurDot** y explica las soluciones definitivas implementadas en el código base, sirviendo como guía histórica y técnica.
+🌍 Languages: [English](TROUBLESHOOTING.md) | [Español](REGISTRO_DE_ERRORES.md)
 
----
-
-## Incidente: Congelamiento Total y "Mouse en forma de X" tras `startx` en ASUS VivoBook 15 (Tiger Lake + NVIDIA MX350, Kernel 6.12+)
-
-### Descripción de los Síntomas
-1. Al ejecutar `startx`, el sistema lograba mostrar el Wallpaper y arrancar Polybar. Sin embargo, Polybar **no actualizaba sus módulos** (quedándose vacío en CPU, RAM, etc) y el proceso consumía un enorme pico del procesamiento de la máquina.
-2. El cursor del mouse se transformaba en una **"X" gigante (crosshair)**, ignorando los temas predeterminados, y además **ningún atajo de teclado (`sxhkd`) funcionaba**, dejando el entorno completamente congelado.
-3. Único indicio vital: al hacer clic sostenido con la "X" sobre la pantalla vacía y arrastrar un rectángulo de selección, la Polybar recobraba la vida y actualizaba su reloj **por un solo segundo**, antes de re-congelarse.
-4. Todo esto ocurría acompañado de un historial previo de errores graves de kernel (`Timeout waiting for PHY ready`) al momento de arrancar la laptop.
-
-### Anatomía del Problema (El Efecto Dominó)
-La investigación en vivo a través de SSH reveló que el fallo no era uno, sino **tres bugs críticos independientes operando al mismo tiempo**, cada uno camuflando al otro:
-
-#### 1. El Bug del "BOM de Windows" y el Secuestrador de Pantalla (ImageMagick)
-* **La Causa:** Los scripts de monitoreo creados en Python (`system-monitor.py` y `bspwm-dynamic.py`) habían sido editados previamente usando un editor de código en Windows. Windows guardó estos archivos inyectándoles silenciosamente un carácter fantasma de codificación al inicio del archivo: un **UTF-8 BOM (`\xef\xbb\xbf`)** y saltos de línea CRLF.
-* **El Efecto:** Al llegar a Linux, el kernel detectaba estos bytes fantasmas y por consiguiente consideraba corrupto el "Shebang" (`#!/usr/bin/env python3`), negándose a ejecutar el archivo utilizando Python. Ante la falla, la terminal estándar de Linux (`/bin/sh`) intentó procesar el archivo a la fuerza y leyó la línea principal del código Python: `import sys`. Totalmente fuera de contexto, para Linux, **`import` es una herramienta binaria del utilitario `ImageMagick`**, cuya única función es cambiar el cursor a una forma de cruz (`X`) para capturar la pantalla esperando a que el usuario dibuje un rectángulo con el ratón. Al dibujar el cuadro, Polybar destrababa pero pasaba a la siguiente instrucción `import subprocess`, repitiendo el proceso y "congelando" las entradas de Xorg infinitamente.
-* **La Solución:** Se reingenierizó la etapa final del instalador (`install.sh`). Ahora somete de manera automática al repositorio completo a un lavado quirúrgico nativo utilizando un motor de expresiones `Perl` avanzado y `Sed`. Todo rastro de BOM o CRLF importado de otros sistemas es eliminado y destrozado de la clonación cruda **antes** de que el binario tome derechos de ejecución.
-
-#### 2. Deadlock KMS Interno (`nvidia-drm modeset=1`)
-* **La Causa:** Intentando optimizar la arquitectura híbrida sólida para soportar pantallas y portátiles modernas de alto desempeño (ej. HP Victus con NVIDIA RTX 4000/5000), se introdujo en el instalador la política universal de inyectar el apoderamiento KMS al Kernel: `options nvidia-drm modeset=1`.
-* **El Efecto:** En equipos de la generación Intel Iris (como la ASUS VivoBook), cuyo conector físico de panel reside completamente en la gráfica integrada, esta inyección obligaba a NVIDIA a usurpar permisos en segundo plano interrumpiendo las consultas de la API gráfica principal (`DRM/KMS`). Cuando utilitarios como `xrandr` o `bspwm` intentaban consultar los monitores, el canal DRM generaba un *deadlock* (choque letal) bloqueando absolutamente X11 tras bambalinas.
-* **La Solución:** Lógica dinámica en tiempo real. Ahora el instalador sondea los puertos PCI de la computadora e identifica específicamente a la familia conflictiva Tiger Lake (`9A49, 9A40...`). De detectarse, rechaza forzosamente al bloque KMS asumiendo correctamente un Offload puro por software nativo de NVIDIA, mientras cuida y sigue desplegándolo de manera óptima en ordenadores como el HP Victus y arquitecturas contemporáneas sin generar trabas.
-
-#### 3. El Conflicto Dual del Kernel 6.12 (`xe` vs `i915`)
-* **La Causa:** A partir del núcleo/kernel 6.12+ (Debian Trixie), se intentó forzar experimentalmente en Linux el uso de un nuevo módulo (`xe`) paralelo al ya funcional módulo clásico de Intel para gráficas (`i915`). 
-* **El Efecto:** Al ejecutarse ambos en simultáneo, formaban un "Kernel Panic" luchando por apoderarse del `intel_tc_port_lock` (El controlador interno logístico de los puertos Thunderbolt / Display). Al intentar solucionar este combate con parámetros rígidos de arranque del bootloader en el pasado, se bloqueó ciegamente el canal energético de la pantalla (`i915.enable_dc=0`), causando los aterradores desconectes físicos directos por *Timeout*.
-* **La Solución:** Intervención aséptica aislada en el `install.sh`. Toda mitigación agresiva sobre la energía de Linux GRUB fue abandonada. De la única traba requerida y vital hoy por hoy, `install.sh` se encargará condicionalmente de aplicar silenciosamente listado negro (`blacklist xe`) exclusivamente al percatarse de gráficas y arquitecturas Intel en esta generación. Ni más ni menos, garantizando un booteo en armonía, donde solo un Módulo a la vez reclama el control.
+This document records the most complex blocks encountered during the development of **SygurDot** and explains the definitive solutions implemented in the codebase, serving as a historical and technical guide.
 
 ---
 
-## Incidente: Fallo de Inicialización y Bloqueo de Xorg con NVIDIA Blackwell (RTX 5050 Laptop) y Ryzen AI (Debian Trixie, Kernel 6.12+)
+## Incident: Complete Freeze and "X-shaped Mouse" after `startx` on ASUS VivoBook 15 (Tiger Lake + NVIDIA MX350, Kernel 6.12+)
 
-### Descripción de los Síntomas
-1. El usuario intentaba abrir la utilidad `nvidia-settings` (NVIDIA X Server Settings) pero esta fallaba, se colgaba o no detectaba la tarjeta de video.
-2. El entorno gráfico general carecía de aceleración por hardware o directamente fallaba al intentar arrancar `startx`.
-3. Al inspeccionar vía comandos o SSH, el proceso de NVIDIA (`nvidia-smi`) se quedaba colgado en estado de sueño ininterrumpible ("D state") y los logs del kernel (`dmesg`) arrojaban errores severos como `RmInitAdapter failed` y conflictos de memoria con el firmware de la GPU.
+### Symptom Description
+1. When running `startx`, the system managed to show the Wallpaper and start Polybar. However, Polybar **did not update its modules** (staying empty on CPU, RAM, etc.) and the process consumed a huge CPU spike.
+2. The mouse cursor transformed into a **giant "X" (crosshair)**, ignoring default themes, and furthermore **no keyboard shortcut (`sxhkd`) worked**, leaving the environment completely frozen.
+3. Only vital sign: clicking and holding with the "X" over the empty screen and dragging a selection box caused Polybar to come back to life and update its clock **for a single second**, before refreezing.
+4. All of this was accompanied by a previous history of severe kernel errors (`Timeout waiting for PHY ready`) when booting the laptop.
 
-### Anatomía del Problema (El Choque Generacional)
-Este incidente fue el resultado particular de combinar el procesador más nuevo de AMD (Ryzen AI 5 340, arquitectura Zen 5) junto con la arquitectura gráfica más reciente de NVIDIA (RTX 5050, familia Blackwell) en un entorno Linux moderno. El problema se dividió en tres fallas estructurales clave:
+### Anatomy of the Problem (The Domino Effect)
+Live investigation via SSH revealed that the failure was not one, but **three independent critical bugs operating at the same time**, each camouflaging the other:
 
-#### 1. Obligatoriedad de "Open Kernel Modules" para Blackwell
-* **La Causa:** Tradicionalmente, los usuarios de Linux instalan la versión cerrada/binaria (proprietaria) de los drivers de NVIDIA. Sin embargo, a partir de la arquitectura Blackwell (Serie 5000), NVIDIA externalizó casi todo el control físico de la tarjeta al **GSP (GPU System Processor)**, un microprocesador integrado en la propia tarjeta. Los módulos cerrados clásicos del driver fallan por diseño al intentar comunicarse con este hardware. Resulta estrictamente obligatorio usar los nuevos módulos de código abierto ("Open Kernel Modules") de NVIDIA.
-* **El Efecto:** Las instalaciones manuales o mediante repositorios del driver estándar se colgaban silenciosamente o generaban crashes al no lograr inicializar el propio sistema embebido (GSP) de la tarjeta.
+#### 1. The "Windows BOM" Bug and the Screen Hijacker (ImageMagick)
+* **The Cause:** The monitoring scripts created in Python (`system-monitor.py` and `bspwm-dynamic.py`) had been previously edited using a code editor on Windows. Windows saved these files quietly injecting a phantom encoding character at the beginning of the file: a **UTF-8 BOM (`\xef\xbb\xbf`)** and CRLF line endings.
+* **The Effect:** Upon arriving in Linux, the kernel detected these phantom bytes and consequently considered the "Shebang" (`#!/usr/bin/env python3`) corrupt, refusing to execute the file using Python. Faced with the failure, the standard Linux terminal (`/bin/sh`) tried to process the file by force and read the main line of the Python code: `import sys`. Totally out of context, for Linux, **`import` is a binary tool from the `ImageMagick` utility**, whose sole function is to change the cursor to a crosshair shape (`X`) to capture the screen waiting for the user to draw a rectangle with the mouse. When drawing the box, Polybar unfroze but moved on to the next instruction `import subprocess`, repeating the process and "freezing" Xorg inputs infinitely.
+* **The Solution:** The final stage of the installer (`install.sh`) was re-engineered. It now automatically submits the entire repository to a native surgical wash using an advanced `Perl` and `Sed` expression engine. All traces of BOM or CRLF imported from other systems are eliminated and destroyed from the raw clone **before** the binary takes execution rights.
 
-#### 2. Conflicto de Memoria IOMMU con Ryzen AI (Strix/Kraken)
-* **La Causa:** Incluso utilizando el módulo correcto, la nueva arquitectura de procesadores AMD y el puente de memoria IOMMU estaban interceptando y bloqueando los intentos de la GPU por cargar su firmware en la memoria virtual, provocando alertas letales de `IO_PAGE_FAULT` y de "Invalid state".
-* **El Efecto:** La GPU intentaba arrancar su firmware GSP, la CPU lo bloqueaba por seguridad de memoria, y dejaba a la tarjeta en un estado corrupto conocido como "WPR2".
+#### 2. Internal KMS Deadlock (`nvidia-drm modeset=1`)
+* **The Cause:** Attempting to optimize the solid hybrid architecture to support modern high-performance displays and laptops (e.g. HP Victus with NVIDIA RTX 4000/5000), the universal policy of injecting KMS hijacking into the Kernel was introduced in the installer: `options nvidia-drm modeset=1`.
+* **The Effect:** On Intel Iris generation equipment (like the ASUS VivoBook), whose physical panel connector resides completely on the integrated graphics, this injection forced NVIDIA to usurp permissions in the background interrupting queries to the main graphics API (`DRM/KMS`). When utilities like `xrandr` or `bspwm` tried to query the monitors, the DRM channel generated a *deadlock* absolutely blocking X11 behind the scenes.
+* **The Solution:** Real-time dynamic logic. Now the installer polls the computer's PCI ports and specifically identifies the conflicting Tiger Lake family (`9A49, 9A40...`). If detected, it forcefully rejects the KMS block correctly assuming a pure Software Offload native to NVIDIA, while taking care of it and continuing to deploy it optimally on computers like the HP Victus and contemporary architectures without generating bottlenecks.
 
-#### 3. Bugs de Versión en Driver 570 y Conflicto de Paquetes
-* **La Causa:** La versión inicial instalada (570.86.16) contenía bugs conocidos de compatibilidad con esta variante de Zen 5. Además, la presencia del paquete `firmware-nvidia-gsp` de los repositorios de Debian causaba choques de versión contra el firmware incrustado en la instalación manual del driver NVIDIA.
+#### 3. The Dual Kernel 6.12 Conflict (`xe` vs `i915`)
+* **The Cause:** Starting with kernel 6.12+ (Debian Trixie), an attempt was made to experimentally force the use of a new module (`xe`) in parallel to the already functional classic Intel graphics module (`i915`) in Linux.
+* **The Effect:** Running both simultaneously caused a "Kernel Panic" fighting to seize the `intel_tc_port_lock` (The internal logistics controller for Thunderbolt / Display ports). Attempting to solve this fight with rigid bootloader boot parameters in the past blindly blocked the screen's power channel (`i915.enable_dc=0`), causing terrifying direct physical disconnects due to *Timeout*.
+* **The Solution:** Isolated aseptic intervention in `install.sh`. All aggressive mitigation on Linux GRUB power was abandoned. Of the only lock required and vital today, `install.sh` will conditionally take care of silently applying a blacklist (`blacklist xe`) exclusively upon noticing Intel graphics and architectures in this generation. No more, no less, ensuring a boot in harmony, where only one Module at a time claims control.
 
 ---
 
-### La Solución y el Procedimiento Paso a Paso
+## Incident: Initialization Failure and Xorg Lockup with NVIDIA Blackwell (RTX 5050 Laptop) and Ryzen AI (Debian Trixie, Kernel 6.12+)
 
-Para erradicar este bloqueo general y devolverle la vida a la GPU, se procedió a orquestar una instalación quirúrgica de los drivers siguiendo estas medidas exactas:
+### Symptom Description
+1. The user tried to open the `nvidia-settings` utility (NVIDIA X Server Settings) but it failed, hung, or did not detect the video card.
+2. The general graphical environment lacked hardware acceleration or directly failed when trying to boot `startx`.
+3. When inspecting via commands or SSH, the NVIDIA process (`nvidia-smi`) hung in an uninterruptible sleep state ("D state") and the kernel logs (`dmesg`) threw severe errors like `RmInitAdapter failed` and memory conflicts with the GPU firmware.
 
-1. **Evadir el Bloqueo de Memoria IOMMU:**
-   Se modificó permanentemente el gestor de arranque (`/etc/default/grub`), asegurando el parámetro `amd_iommu=off` (o `iommu=pt`) dentro de `GRUB_CMDLINE_LINUX_DEFAULT`. Esto le quitó las esposas a la GPU permitiéndole transaccionar con su firmware libremente durante el arranque del sistema.
+### Anatomy of the Problem (The Generational Clash)
+This incident was the particular result of combining the newest AMD processor (Ryzen AI 5 340, Zen 5 architecture) together with the most recent NVIDIA graphics architecture (RTX 5050, Blackwell family) in a modern Linux environment. The problem was divided into three key structural failures:
 
-2. **Purificar el Entorno y Limpiar el Estado WPR2:**
-   Se borró el paquete nativo de firmware (`sudo apt purge firmware-nvidia-gsp`). Adicionalmente, fue necesario aplicarle a la laptop un **Hard-Reset (Mantenido 15 segundos en el botón físico de encendido)**. Esta es la única forma confiable de drenar la energía y limpiar el registro "sucio" de la memoria WPR2 para que la gráfica vuelva a aceptar comandos limpios en su siguiente encendido.
+#### 1. Obligation of "Open Kernel Modules" for Blackwell
+* **The Cause:** Traditionally, Linux users install the closed/binary (proprietary) version of NVIDIA drivers. However, starting with the Blackwell architecture (5000 Series), NVIDIA outsourced almost all physical control of the card to the **GSP (GPU System Processor)**, a microprocessor integrated into the card itself. Classic closed modules fail by design when trying to communicate with this hardware. It is strictly mandatory to use NVIDIA's new open source modules ("Open Kernel Modules").
+* **The Effect:** Manual installations or via standard driver repositories hung silently or generated crashes failing to initialize the card's own embedded system (GSP).
 
-3. **Descarga e Instalación Forzada del Módulo Abierto (v595.58.03):**
-   Conectados desde TTY / SSH como `root`, se detuvieron los procesos colgados y se descargaron los módulos defectuosos en memoria:
+#### 2. IOMMU Memory Conflict with Ryzen AI (Strix/Kraken)
+* **The Cause:** Even using the correct module, the new AMD processor architecture and the IOMMU memory bridge were intercepting and blocking the GPU's attempts to load its firmware into virtual memory, causing lethal `IO_PAGE_FAULT` and "Invalid state" alerts.
+* **The Effect:** The GPU tried to boot its GSP firmware, the CPU blocked it for memory security, and left the card in a corrupt state known as "WPR2".
+
+#### 3. Version Bugs in Driver 570 and Package Conflict
+* **The Cause:** The initial version installed (570.86.16) contained known compatibility bugs with this Zen 5 variant. Furthermore, the presence of the `firmware-nvidia-gsp` package from the Debian repositories caused version clashes against the firmware embedded in the manual NVIDIA driver installation.
+
+---
+
+### The Solution and Step-by-Step Procedure
+
+To eradicate this general block and bring the GPU back to life, a surgical installation of the drivers was orchestrated following these exact measures:
+
+1. **Evade the IOMMU Memory Lock:**
+   The boot manager (`/etc/default/grub`) was permanently modified, securing the parameter `amd_iommu=off` (or `iommu=pt`) within `GRUB_CMDLINE_LINUX_DEFAULT`. This took the handcuffs off the GPU allowing it to transact with its firmware freely during system boot.
+
+2. **Purify the Environment and Clean the WPR2 State:**
+   The native firmware package was deleted (`sudo apt purge firmware-nvidia-gsp`). Additionally, it was necessary to apply a **Hard-Reset (Held 15 seconds on the physical power button)** to the laptop. This is the only reliable way to drain the power and clean the "dirty" register of the WPR2 memory so the graphics card accepts clean commands on its next boot.
+
+3. **Download and Forced Installation of the Open Module (v595.58.03):**
+   Connected from TTY / SSH as `root`, hung processes were stopped and defective modules were unloaded from memory:
    ```bash
    modprobe -r nvidia_drm nvidia_modeset nvidia_uvm nvidia
    ```
-   A continuación, se corrió la instalación del parche más avanzado (`v595.58.03.run`). El secreto vital de este paso fue obligar silenciosamente a DKMS a compilar estrictamente los módulos abiertos:
+   Next, the most advanced patch installation was run (`v595.58.03.run`). The vital secret of this step was to silently force DKMS to strictly compile the open modules:
    ```bash
    /tmp/nvidia_new.run --silent --dkms --kernel-module-type=open --no-questions
    ```
 
-### Conclusión
-Tras ejecutar estos pasos, `nvidia-smi` iluminó la terminal reconociendo majestuosamente la **RTX 5050 Laptop GPU**. El Servidor X (`startx`) fue capaz de arrancar fluido, habilitando por fin el panel gráfico `nvidia-settings` con control total sobre los sensores y el rendimiento 3D del equipo. Este caso en particular asienta el protocolo para tratar equipos "híbridos" de novísima generación.
+### Conclusion
+After executing these steps, `nvidia-smi` lit up the terminal majestically recognizing the **RTX 5050 Laptop GPU**. The X Server (`startx`) was able to boot smoothly, finally enabling the `nvidia-settings` graphics panel with full control over the sensors and 3D performance of the equipment. This particular case establishes the protocol for treating "hybrid" computers of the newest generation.
 
 ---
 
-## Incidente: Congelamientos de Pantalla y Pérdida de Ventanas en HP Victus (AMD Krackan + NVIDIA RTX 5050)
+## Incident: Screen Freezes and Window Loss on HP Victus (AMD Krackan + NVIDIA RTX 5050)
 
-### Descripción de los Síntomas
-1. La pantalla se congelaba súbitamente durante el uso normal. Se perdía la visualización del contenido de las ventanas o estas parecían "desaparecer", aunque el marco del gestor de ventanas (`bspwm`) seguía siendo visible.
-2. El sistema de fondo seguía operando (se podía cambiar a un TTY), pero el entorno gráfico era inoperable interactuando con ratón o teclado.
-3. La única forma de "descongelar" la pantalla sin perder el entorno gráfico era realizando un ciclo de energía física del panel (cerrando y abriendo la tapa de la laptop) o recargando forzosamente el gestor de ventanas (`Super + Alt + R`), lo cual reiniciaba el compositor `picom`.
-4. El problema persistía independientemente del backend del compositor (`xrender` vs `glx`) e incluso de opciones extremas de sincronización en Xorg (`TearFree`, `DRI 3`). 
+### Symptom Description
+1. The screen froze suddenly during normal use. The visualization of the window content was lost or they seemed to "disappear", although the window manager frame (`bspwm`) was still visible.
+2. The background system continued to operate (you could switch to a TTY), but the graphical environment was inoperable interacting with mouse or keyboard.
+3. The only way to "unfreeze" the screen without losing the graphical environment was by performing a physical power cycle of the panel (closing and opening the laptop lid) or forcefully reloading the window manager (`Super + Alt + R`), which restarted the `picom` compositor.
+4. The problem persisted regardless of the compositor backend (`xrender` vs `glx`) and even extreme synchronization options in Xorg (`TearFree`, `DRI 3`).
 
-### Anatomía del Problema (El Fallo de Ahorro Energético en el Kernel)
-El problema real no se encontraba en el compositor de ventanas (`picom`) ni en la configuración de Xorg (el archivo `/etc/X11/xorg.conf.d/10-hibrido.conf` estaba correcto y es estrictamente necesario en esta arquitectura híbrida para dirigir el renderizado), sino en un **bug del kernel de Linux con las tecnologías modernas de gestión de energía de pantallas en las nuevas iGPUs de AMD (Arquitectura Krackan / Radeon 800M)**.
+### Anatomy of the Problem (The Kernel Power Saving Failure)
+The real problem was not in the window compositor (`picom`) or the Xorg configuration (the `/etc/X11/xorg.conf.d/10-hibrido.conf` file was correct and is strictly necessary in this hybrid architecture to direct rendering), but in a **Linux kernel bug with modern screen power management technologies in the new AMD iGPUs (Krackan / Radeon 800M Architecture)**.
 
-El origen de la falla es un desajuste profundo a nivel de Direct Rendering Manager (DRM) con dos funciones específicas del driver `amdgpu`:
+The origin of the failure is a deep mismatch at the Direct Rendering Manager (DRM) level with two specific functions of the `amdgpu` driver:
 * **Panel Self Refresh (PSR)**
 * **Scatter/Gather (SG) Display**
 
-Estas funciones ahorran batería "durmiendo" la conexión física entre la gráfica AMD y el panel de la laptop cuando la imagen en pantalla es estática. El error crítico en el kernel de Linux ocurría cuando la gráfica intentaba **"despertar" la pantalla** a tiempo para procesar el redibujado de una ventana solicitada por el compositor (`picom`) o el gestor de ventanas (`bspwm`). 
-Al fallar este despertar, el búfer de imagen entraba en un *deadlock*, atascándose infinitamente esperando una señal física de sincronización que nunca llegaba, congelando visualmente el escritorio.
+These functions save battery by "sleeping" the physical connection between the AMD graphics and the laptop panel when the image on screen is static. The critical error in the Linux kernel occurred when the graphics tried to **"wake up" the screen** in time to process the redrawing of a window requested by the compositor (`picom`) or the window manager (`bspwm`).
+When this awakening failed, the image buffer entered a *deadlock*, getting infinitely stuck waiting for a physical synchronization signal that never arrived, visually freezing the desktop.
 
-### La Solución Definitiva (Parche a Nivel Kernel)
-Cualquier intento de forzar la sincronización a través de Xorg (añadiendo directivas estrictas en `10-hibrido.conf`) o ajustando la agresividad de repintado en `picom.conf` (como alterar `use-damage`) es inútil, ya que ataca el síntoma y no la enfermedad.
+### The Definitive Solution (Kernel-Level Patch)
+Any attempt to force synchronization through Xorg (adding strict directives in `10-hibrido.conf`) or adjusting the repaint aggressiveness in `picom.conf` (like altering `use-damage`) is useless, since it attacks the symptom and not the disease.
 
-La solución quirúrgica implementada requiere desactivar estrictamente estas problemáticas rutinas de energía de la pantalla, pasándole parámetros directos de booteo al kernel a través de GRUB:
+The surgical solution implemented requires strictly deactivating these problematic screen power routines, passing direct boot parameters to the kernel through GRUB:
 
-1. **Edición del Gestor de Arranque (`/etc/default/grub`):**
-   Se modificó la variable `GRUB_CMDLINE_LINUX_DEFAULT` para inyectar las siguientes dos directivas clave de AMDGPU:
-   * **`amdgpu.sg_display=0`**: Desactiva forzosamente el uso de Scatter/Gather Display, obligando a la GPU a usar memoria de forma directa y secuencial para los búferes de pantalla.
-   * **`amdgpu.dcdebugmask=0x10`**: Instruye al Display Core (DC) de AMD a omitir el uso de Panel Self Refresh (PSR).
+1. **Editing the Boot Manager (`/etc/default/grub`):**
+   The `GRUB_CMDLINE_LINUX_DEFAULT` variable was modified to inject the following two key AMDGPU directives:
+   * **`amdgpu.sg_display=0`**: Forcefully disables the use of Scatter/Gather Display, forcing the GPU to use memory directly and sequentially for screen buffers.
+   * **`amdgpu.dcdebugmask=0x10`**: Instructs the AMD Display Core (DC) to bypass the use of Panel Self Refresh (PSR).
 
-2. **Actualización y Limpieza:**
-   Se aplicaron los cambios en el sistema con `sudo update-grub`. Para garantizar la limpieza del entorno, se removieron todas las alteraciones experimentales ("sincronizaciones extremas") hechas en archivos como `10-hibrido.conf` y `picom.conf` devolviéndolas a la configuración original estándar y segura del sistema. Al reiniciar, los congelamientos intermitentes y el *deadlock* de renderizado desaparecieron por completo.
+2. **Update and Cleanup:**
+   The changes were applied to the system with `sudo update-grub`. To guarantee the cleanliness of the environment, all experimental alterations ("extreme synchronizations") made in files like `10-hibrido.conf` and `picom.conf` were removed, returning them to the original standard and safe system configuration. Upon reboot, the intermittent freezes and rendering *deadlock* disappeared completely.

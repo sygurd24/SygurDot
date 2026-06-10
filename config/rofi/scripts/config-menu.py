@@ -520,9 +520,7 @@ def polybar_menu():
         
         options = []
         
-        # Add bspwm at the top
-        bspwm_lbl = L({"es": "BSPWM", "en": "BSPWM Config", "pt": "BSPWM", "fr": "BSPWM", "ru": "BSPWM"})
-        options.append(f"󰕮 {bspwm_lbl}")
+        # Removed bspwm from here
         
         for mod in all_modules:
             icon = module_icons.get(mod, "󰅪") # Fallback to a generic icon
@@ -550,12 +548,8 @@ def polybar_menu():
         if idx == -1 or idx == len(options) - 1: # Cancel or Back
             break
             
-        if idx == 0:
-            bspwm_submenu()
-            continue
-            
-        # The offset for togglable modules is 1 because BSPWM is at index 0
-        selected_mod = all_modules[idx - 1]
+        # The offset for togglable modules is 0 because BSPWM is no longer here
+        selected_mod = all_modules[idx]
 
         if selected_mod == "temperature":
             temperature_submenu(enabled, all_modules)
@@ -997,11 +991,97 @@ def wallpaper_menu():
                     with open(mode_file, "w") as f: f.write("custom")
                     subprocess.run(["pkill", "-USR1", "-f", "dynamic_wallpaper.sh"])
 
+def picom_submenu():
+    import re
+    picom_conf_path = os.path.expanduser("~/dotfiles/config/picom/picom.conf")
+    
+    def read_picom_conf():
+        try:
+            with open(picom_conf_path, "r") as f:
+                return f.read()
+        except:
+            return ""
+
+    def write_picom_conf(content):
+        with open(picom_conf_path, "w") as f:
+            f.write(content)
+        # Wait for picom to fully exit before restarting to avoid losing the compositor
+        restart_cmd = "killall -q picom; while pgrep -x picom >/dev/null; do sleep 0.1; done; picom -b --config ~/dotfiles/config/picom/picom.conf"
+        subprocess.Popen(restart_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    while True:
+        conf = read_picom_conf()
+        
+        has_animations = re.search(r'^animations\s*=\s*\(', conf, re.MULTILINE) is not None
+        has_shadow = re.search(r'^shadow\s*=\s*true;', conf, re.MULTILINE) is not None
+        has_vsync = re.search(r'^vsync\s*=\s*true;', conf, re.MULTILINE) is not None
+        
+        lbl_anim = f"{ICON_CHECK if has_animations else '   '} " + L({"es": "Animaciones de ventanas", "en": "Window Animations", "pt": "Animações de janelas", "fr": "Animations de fenêtres", "ru": "Анимации окон"})
+        lbl_shadow = f"{ICON_CHECK if has_shadow else '   '} " + L({"es": "Sombras", "en": "Shadows", "pt": "Sombras", "fr": "Ombres", "ru": "Тени"})
+        lbl_vsync = f"{ICON_CHECK if has_vsync else '   '} " + L({"es": "VSync (Anti-tearing)", "en": "VSync (Anti-tearing)", "pt": "VSync (Anti-tearing)", "fr": "VSync (Anti-déchirure)", "ru": "VSync (Анти-разрыв)"})
+        
+        options = [
+            lbl_anim,
+            lbl_shadow,
+            lbl_vsync,
+            f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
+        ]
+        
+        idx = show_rofi(L({"es": "Efectos Visuales (Picom)", "en": "Visual Effects (Picom)", "pt": "Efeitos Visuais (Picom)", "fr": "Effets Visuels (Picom)", "ru": "Визуальные эффекты (Picom)"}), options)
+        
+        if idx == -1 or idx == len(options) - 1:
+            break
+            
+        if idx == 0:
+            if has_animations:
+                new_conf = re.sub(r'^animations\s*=\s*\([\s\S]*?^\);', lambda m: "\n".join(["# " + line for line in m.group(0).split("\n")]), conf, flags=re.MULTILINE)
+            else:
+                new_conf = re.sub(r'^# animations\s*=\s*\([\s\S]*?^# \);', lambda m: "\n".join([line.replace("# ", "", 1) if line.startswith("# ") else line.replace("#", "", 1) if line.startswith("#") else line for line in m.group(0).split("\n")]), conf, flags=re.MULTILINE)
+            write_picom_conf(new_conf)
+        elif idx == 1:
+            if has_shadow:
+                new_conf = re.sub(r'^shadow\s*=\s*true;', 'shadow = false;', conf, flags=re.MULTILINE)
+            else:
+                new_conf = re.sub(r'^shadow\s*=\s*false;', 'shadow = true;', conf, flags=re.MULTILINE)
+            write_picom_conf(new_conf)
+        elif idx == 2:
+            if has_vsync:
+                new_conf = re.sub(r'^vsync\s*=\s*true;', 'vsync = false;', conf, flags=re.MULTILINE)
+            else:
+                new_conf = re.sub(r'^vsync\s*=\s*false;', 'vsync = true;', conf, flags=re.MULTILINE)
+            write_picom_conf(new_conf)
+
+def desktop_menu():
+    while True:
+        bspwm_text = L({"es": "Gestor de ventanas (BSPWM)", "en": "Window Manager (BSPWM)", "pt": "Gerenciador de Janelas (BSPWM)", "fr": "Gestionnaire de fenêtres (BSPWM)", "ru": "Оконный менеджер (BSPWM)"})
+        polybar_text = L({"es": "Barra de estado (Polybar)", "en": "Status Bar (Polybar)", "pt": "Barra de status (Polybar)", "fr": "Barre d'état (Polybar)", "ru": "Строка состояния (Polybar)"})
+        picom_text = L({"es": "Efectos Visuales (Picom)", "en": "Visual Effects (Picom)", "pt": "Efeitos Visuais (Picom)", "fr": "Effets Visuels (Picom)", "ru": "Визуальные эффекты (Picom)"})
+        
+        options = [
+            f"󰕮 {bspwm_text}",
+            f"{ICON_POLYBAR} {polybar_text}",
+            f"󰗈 {picom_text}",
+            f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
+        ]
+        
+        title = L({"es": "Entorno", "en": "Desktop", "pt": "Ambiente", "fr": "Environnement", "ru": "Окружение"})
+        idx = show_rofi(title, options)
+        
+        if idx == -1 or idx == len(options) - 1:
+            break
+            
+        if idx == 0:
+            bspwm_submenu()
+        elif idx == 1:
+            polybar_menu()
+        elif idx == 2:
+            picom_submenu()
+
 def main_menu():
     while True:
         lang_text = L({"es": "Idioma", "en": "Language", "pt": "Idioma", "fr": "Langue", "ru": "Язык"})
         kb_text = L({"es": "Teclado", "en": "Keyboard", "pt": "Teclado", "fr": "Clavier", "ru": "Клавиатура"})
-        poly_text = L({"es": "Polybar", "en": "Polybar", "pt": "Polybar", "fr": "Polybar", "ru": "Polybar"})
+        env_text = L({"es": "Entorno", "en": "Desktop", "pt": "Ambiente", "fr": "Environnement", "ru": "Окружение"})
         cursor_text = L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"})
         wallpaper_text = L({"es": "Fondo", "en": "Wallpaper", "pt": "Papel de Parede", "fr": "Fond d'écran", "ru": "Обои"})
         config_text = L({"es": "Configuración", "en": "Configuration", "pt": "Configuração", "fr": "Configuration", "ru": "Настройка"})
@@ -1009,7 +1089,7 @@ def main_menu():
         options = [
             f"{ICON_LANG} {lang_text}",
             f"{ICON_KB} {kb_text}",
-            f"{ICON_POLYBAR} {poly_text}",
+            f"󰕮 {env_text}",
             f"{ICON_CURSOR} {cursor_text}",
             f"{ICON_WALLPAPER} {wallpaper_text}"
         ]
@@ -1024,7 +1104,7 @@ def main_menu():
         elif idx == 1:
             keyboard_menu()
         elif idx == 2:
-            polybar_menu()
+            desktop_menu()
         elif idx == 3:
             cursor_submenu()
         elif idx == 4:

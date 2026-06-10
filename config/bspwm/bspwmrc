@@ -78,7 +78,7 @@ xss-lock -- "$HOME/.config/bspwm/scripts/lock.sh" &
 
 # Launchers
 ~/.config/polybar/launch.sh &
-pkill -x picom; picom --config "$HOME/.config/picom/picom.conf" -b &
+killall -q picom; while pgrep -x picom >/dev/null; do sleep 0.1; done; picom --config "$HOME/.config/picom/picom.conf" -b &
 pgrep -x dunst > /dev/null || dunst &
 
 # Bluetooth Privacy Guard (Pause on Disconnect)
