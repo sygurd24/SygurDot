@@ -117,9 +117,6 @@ button selected {
 
 error-message {
     padding: 20px;
-    border: 3px;
-    border-color: @blue;
-    border-radius: 10px;
     background-color: @bg-col;
     text-color: @fg-col;
 }
@@ -127,6 +124,6 @@ error-message {
 textbox {
     background-color: @bg-col;
     text-color: @fg-col;
-    vertical-align: 0.5;
+    vertical-align: 0.0;
     horizontal-align: 0.0;
 }

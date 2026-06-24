@@ -27,3 +27,6 @@ config/gtk-3.0/bookmarks
 # Downloaded CLI binaries
 bin/claude
 bin/copilot
+bin/agy
+bin/agy.*
+fonts/.uuid
