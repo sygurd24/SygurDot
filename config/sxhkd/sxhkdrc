@@ -89,6 +89,12 @@ super + grave
 alt + Tab
 	"$HOME/.config/bspwm/scripts/desktop_cycle.sh"
 
+~@Alt_L
+	rm -f /tmp/bspwm_alt_tab_state
+
+~@Alt_R
+	rm -f /tmp/bspwm_alt_tab_state
+
 # focus or send to the given desktop
 super + {_,shift + }{1-9,0}
 	bspc {desktop -f,node -d} '^{1-9,10}'
