@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z "$TZ" ] && [ -f "$HOME/.config/dotfiles/timezone" ]; then
+    export TZ=$(cat "$HOME/.config/dotfiles/timezone")
+fi
+
 # Lock screen using i3lock-color with Tokyo Night / Turquoise theme
 # Falls back to standard i3lock if i3lock-color is not installed
 

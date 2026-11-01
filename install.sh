@@ -782,8 +782,6 @@ if [ -d "$DOTFILES_DIR/fonts" ]; then
     fi
 fi
 
-fi
-
 if [ ! -d "$HOME/.icons/Nordzy-cursors" ]; then
     log "Downloading Nordzy cursors..."
     if getent hosts github.com > /dev/null 2>&1; then
@@ -832,6 +830,35 @@ if [ ! -f "$HOME/.config/dotfiles/language" ]; then
     echo "export LC_ALL=\"$LOCALE_VAL\"" >> "$HOME/.config/dotfiles/locale.sh"
     echo "export LANGUAGE=\"$LANG_VAL\"" >> "$HOME/.config/dotfiles/locale.sh"
 fi
+
+# Initialize Timezone Preference
+if [ ! -f "$HOME/.config/dotfiles/timezone" ]; then
+    DETECTED_TZ=""
+    if [ -L /etc/localtime ]; then
+        DETECTED_TZ=$(readlink -f /etc/localtime | sed 's|.*/zoneinfo/||')
+    elif command -v timedatectl &>/dev/null; then
+        DETECTED_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || true)
+    fi
+    [ -z "$DETECTED_TZ" ] && DETECTED_TZ="America/Chicago"
+    log "Initializing default timezone ($DETECTED_TZ)..."
+    mkdir -p "$HOME/.config/dotfiles"
+    echo "$DETECTED_TZ" > "$HOME/.config/dotfiles/timezone"
+    echo "export TZ=\"$DETECTED_TZ\"" >> "$HOME/.config/dotfiles/locale.sh"
+fi
+
+if [ -f "$HOME/.config/dotfiles/locale.sh" ] && ! grep -q "^export TZ=" "$HOME/.config/dotfiles/locale.sh"; then
+    TZ_VAL=$(cat "$HOME/.config/dotfiles/timezone" 2>/dev/null || echo "America/Chicago")
+    echo "export TZ=\"$TZ_VAL\"" >> "$HOME/.config/dotfiles/locale.sh"
+fi
+
+# Ensure locale.sh is loaded in .profile and .bashrc if present
+for rcfile in "$HOME/.profile" "$HOME/.bashrc"; do
+    if [ -f "$rcfile" ] && ! grep -q "dotfiles/locale.sh" "$rcfile"; then
+        echo "" >> "$rcfile"
+        echo "# Load dotfiles locale and timezone" >> "$rcfile"
+        echo '[ -f "$HOME/.config/dotfiles/locale.sh" ] && . "$HOME/.config/dotfiles/locale.sh"' >> "$rcfile"
+    fi
+done
 
 # Initialize Keyboard Preference
 if [ ! -f "$HOME/.config/dotfiles/keyboard" ]; then

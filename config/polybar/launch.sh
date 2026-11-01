@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Cargar configuración de locale y zona horaria
+[ -f "$HOME/.config/dotfiles/locale.sh" ] && . "$HOME/.config/dotfiles/locale.sh"
+
 # Terminar las instancias de barra que ya se estén ejecutando
 pkill -x polybar 2>/dev/null
 
@@ -53,13 +56,13 @@ fi
 # Usamos export para que Polybar vea la variable de entorno
 export POLYBAR_MODULES_CENTER="$CENTER_MODULES"
 export POLYBAR_MODULES_RIGHT="$RIGHT_MODULES"
-polybar example &
+polybar example & disown
 
 
 # Kill existing temperature daemon if running
 pkill -f temperature-daemon.sh
 
 # Start temperature daemon
-~/.config/polybar/scripts/temperature-daemon.sh &
+~/.config/polybar/scripts/temperature-daemon.sh & disown
 
 echo "Polybar lanzada..."

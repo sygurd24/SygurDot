@@ -29,4 +29,9 @@ bin/claude
 bin/copilot
 bin/agy
 bin/agy.*
+bin/fonttools
+bin/pyftmerge
+bin/pyftsubset
+bin/ttx
+bin/vba_extract.py
 fonts/.uuid

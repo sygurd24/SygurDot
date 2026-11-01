@@ -1,6 +1,9 @@
 #! /bin/sh
 exec > /tmp/bspwmrc.log 2>&1
 
+# Cargar configuración de locale y zona horaria
+[ -f "$HOME/.config/dotfiles/locale.sh" ] && . "$HOME/.config/dotfiles/locale.sh"
+
 # ==========================================================
 # 1. VISUAL STARTUP (Prioridad máxima para reducir pantalla negra)
 # ==========================================================
@@ -110,4 +113,4 @@ bspc rule -a BrightnessSlider state=floating
 # Border animation
 pgrep -f border_animator.py && pkill -f border_animator.py
 "$HOME/.config/bspwm/scripts/border_animator.py" &
-systemctl --user import-environment DISPLAY XAUTHORITY && systemctl --user start opentabletdriver.service &
+systemctl --user import-environment DISPLAY XAUTHORITY TZ && systemctl --user start opentabletdriver.service &

@@ -2,16 +2,20 @@
 import subprocess
 import os
 import sys
+import datetime
+import zoneinfo
 
 # Dotfiles Configuration Menu
 # Handles system-wide settings like Language
 
 LANG_FILE = os.path.expanduser("~/.config/dotfiles/language")
+TZ_FILE = os.path.expanduser("~/.config/dotfiles/timezone")
 POLY_ENABLED_FILE = os.path.expanduser("~/.config/dotfiles/polybar_modules_enabled")
 THEME_STR = 'window { width: 600px; } listview { columns: 1; lines: 10; } element-text { font: "JetBrainsMono Nerd Font Mono 11"; }'
 
 # Icons
 ICON_LANG = "󰗊 "
+ICON_TIME = "󰥔 "
 ICON_KB = "󰌌 "
 ICON_CHECK = " "
 ICON_BACK = " "
@@ -85,11 +89,23 @@ def set_lang(lang):
     
     val = locale_map.get(lang, "en_US.UTF-8")
     locale_file = os.path.expanduser("~/.config/dotfiles/locale.sh")
+    tz_file = os.path.expanduser("~/.config/dotfiles/timezone")
+    tz_val = ""
+    if os.path.exists(tz_file):
+        try:
+            with open(tz_file, "r") as f:
+                tz_val = f.read().strip()
+        except:
+            pass
+    if not tz_val:
+        tz_val = os.environ.get("TZ", "")
 
     with open(locale_file, "w") as f:
         f.write(f'export LANG="{val}"\n')
         f.write(f'export LC_ALL="{val}"\n')
         f.write(f'export LANGUAGE="{lang}"\n')
+        if tz_val:
+            f.write(f'export TZ="{tz_val}"\n')
 
     msg_map = {
         "es": "Idioma cambiado a Español",
@@ -242,6 +258,308 @@ def language_menu():
         # Map back to code
         if idx < len(langs):
             set_lang(langs[idx][0])
+
+TZ_ALIASES = {
+    # Norteamérica & Centroamérica
+    'America/Chicago': 'Arkansas, US Central, Texas, Dallas, Houston, Chicago, CST, CDT',
+    'America/New_York': 'US Eastern, Florida, Miami, Nueva York, Washington DC, Atlanta, EST, EDT',
+    'America/Los_Angeles': 'US Pacific, California, Los Angeles, San Francisco, Seattle, PST, PDT',
+    'America/Denver': 'US Mountain, Colorado, Denver, Salt Lake City, MST, MDT',
+    'America/Phoenix': 'Arizona, Phoenix, MST',
+    'America/Anchorage': 'Alaska, Anchorage, AKST',
+    'America/Honolulu': 'Hawaii, Honolulu, HST',
+    'America/Toronto': 'Canadá, Toronto, Ontario, Quebec, Montreal',
+    'America/Vancouver': 'Canadá, Vancouver, British Columbia',
+    'America/Panama': 'Panamá, Panama, PTY',
+    'America/Costa_Rica': 'Costa Rica, San José',
+    'America/El_Salvador': 'El Salvador, San Salvador',
+    'America/Guatemala': 'Guatemala',
+    'America/Tegucigalpa': 'Honduras, Tegucigalpa',
+    'America/Managua': 'Nicaragua, Managua',
+    'America/Mexico_City': 'México, Mexico, CDMX, Guadalajara, Monterrey',
+    'America/Cancun': 'México, Cancún, Quintana Roo',
+    'America/Tijuana': 'México, Tijuana, Baja California',
+    # Sudamérica
+    'America/Bogota': 'Colombia, Bogotá, Medellin, Cali',
+    'America/Lima': 'Perú, Lima',
+    'America/Caracas': 'Venezuela, Caracas',
+    'America/Santiago': 'Chile, Santiago',
+    'America/Buenos_Aires': 'Argentina, Buenos Aires, Córdoba, Rosario',
+    'America/Sao_Paulo': 'Brasil, São Paulo, Rio de Janeiro',
+    'America/Montevideo': 'Uruguay, Montevideo',
+    'America/Asuncion': 'Paraguay, Asunción',
+    'America/La_Paz': 'Bolivia, La Paz',
+    'America/Guayaquil': 'Ecuador, Guayaquil, Quito',
+    # Caribe
+    'America/Santo_Domingo': 'República Dominicana, Santo Domingo',
+    'America/Puerto_Rico': 'Puerto Rico, San Juan',
+    'America/Havana': 'Cuba, La Habana',
+    # Europa
+    'Europe/Madrid': 'España, Spain, Madrid, Barcelona, Valencia, Sevilla',
+    'Atlantic/Canary': 'España, Islas Canarias, Las Palmas, Tenerife',
+    'Europe/London': 'Reino Unido, UK, Inglaterra, London, GMT, BST',
+    'Europe/Paris': 'Francia, France, Paris',
+    'Europe/Berlin': 'Alemania, Germany, Berlin, Frankfurt, Munich',
+    'Europe/Rome': 'Italia, Italy, Roma, Milan',
+    'Europe/Lisbon': 'Portugal, Lisboa, Porto',
+    'Europe/Amsterdam': 'Países Bajos, Netherlands, Amsterdam',
+    'Europe/Brussels': 'Bélgica, Belgium, Bruselas',
+    'Europe/Zurich': 'Suiza, Switzerland, Zurich, Ginebra',
+    'Europe/Vienna': 'Austria, Viena',
+    'Europe/Athens': 'Grecia, Greece, Atenas',
+    'Europe/Dublin': 'Irlanda, Ireland, Dublín',
+    'Europe/Stockholm': 'Suecia, Sweden, Estocolmo',
+    'Europe/Oslo': 'Noruega, Norway, Oslo',
+    'Europe/Copenhagen': 'Dinamarca, Denmark, Copenhague',
+    'Europe/Warsaw': 'Polonia, Poland, Varsovia',
+    'Europe/Prague': 'República Checa, Czech Republic, Praga',
+    'Europe/Kyiv': 'Ucrania, Ukraine, Kiev',
+    'Europe/Moscow': 'Rusia, Russia, Moscú, MSK',
+    # Asia & Oceanía & África
+    'Asia/Tokyo': 'Japón, Japan, Tokio, JST',
+    'Asia/Seoul': 'Corea del Sur, South Korea, Seúl, KST',
+    'Asia/Shanghai': 'China, Shanghái, Pekín, Beijing, CST',
+    'Asia/Hong_Kong': 'Hong Kong, HK',
+    'Asia/Taipei': 'Taiwán, Taiwan, Taipéi',
+    'Asia/Singapore': 'Singapur, Singapore',
+    'Asia/Bangkok': 'Tailandia, Thailand, Bangkok, Indochina',
+    'Asia/Dubai': 'Emiratos Árabes Unidos, UAE, Dubái, Abu Dhabi, GST',
+    'Asia/Riyadh': 'Arabia Saudita, Saudi Arabia, Riad',
+    'Asia/Kolkata': 'India, Nueva Delhi, Mumbai, IST',
+    'Asia/Jerusalem': 'Israel, Jerusalén, Tel Aviv',
+    'Australia/Sydney': 'Australia, Sídney, Melbourne, AEST',
+    'Australia/Perth': 'Australia, Perth, AWST',
+    'Pacific/Auckland': 'Nueva Zelanda, New Zealand, Auckland, NZST',
+    'Africa/Cairo': 'Egipto, Egypt, El Cairo',
+    'Africa/Johannesburg': 'Sudáfrica, South Africa, Johannesburgo',
+    'Africa/Casablanca': 'Marruecos, Morocco, Casablanca',
+    'Africa/Lagos': 'Nigeria, Lagos',
+    'Africa/Nairobi': 'Kenia, Kenya, Nairobi',
+    'UTC': 'Tiempo Universal Coordinado, GMT, Coordinated Universal Time'
+}
+
+def get_current_timezone():
+    if os.path.exists(TZ_FILE):
+        try:
+            with open(TZ_FILE, "r") as f:
+                tz = f.read().strip()
+                if tz: return tz
+        except:
+            pass
+    if "TZ" in os.environ and os.environ["TZ"]:
+        return os.environ["TZ"]
+    if os.path.islink("/etc/localtime"):
+        try:
+            target = os.readlink("/etc/localtime")
+            parts = target.split("/zoneinfo/")
+            if len(parts) > 1:
+                return parts[1]
+        except:
+            pass
+    return "America/Chicago"
+
+def set_timezone(tz_name):
+    os.makedirs(os.path.dirname(TZ_FILE), exist_ok=True)
+    with open(TZ_FILE, "w") as f:
+        f.write(tz_name + "\n")
+    
+    locale_file = os.path.expanduser("~/.config/dotfiles/locale.sh")
+    lines = []
+    if os.path.exists(locale_file):
+        try:
+            with open(locale_file, "r") as f:
+                for line in f:
+                    if not line.startswith("export TZ="):
+                        lines.append(line.rstrip("\n"))
+        except:
+            pass
+    lines.append(f'export TZ="{tz_name}"')
+    with open(locale_file, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    
+    os.environ["TZ"] = tz_name
+    try:
+        import time
+        time.tzset()
+    except:
+        pass
+    
+    try:
+        subprocess.run(["systemctl", "--user", "set-environment", f"TZ={tz_name}"], capture_output=True)
+    except:
+        pass
+    try:
+        subprocess.run(["dbus-update-activation-environment", "--systemd", f"TZ={tz_name}"], capture_output=True)
+    except:
+        pass
+
+    poly_launch = os.path.expanduser("~/.config/polybar/launch.sh")
+    if os.path.exists(poly_launch):
+        try:
+            poly_env = dict(os.environ)
+            if "DISPLAY" not in poly_env:
+                poly_env["DISPLAY"] = ":0"
+            subprocess.Popen(["bash", poly_launch], env=poly_env)
+        except:
+            pass
+            
+    try:
+        subprocess.run(["killall", "-q", "-USR1", "dynamic_wallpaper.sh"])
+    except:
+        pass
+
+    now_str = ""
+    try:
+        now = datetime.datetime.now(zoneinfo.ZoneInfo(tz_name))
+        now_str = now.strftime(" (%H:%M, %Z)")
+    except:
+        pass
+
+    msg = L({
+        "es": f"Zona horaria cambiada a {tz_name}{now_str}",
+        "en": f"Timezone changed to {tz_name}{now_str}",
+        "pt": f"Fuso horário alterado para {tz_name}{now_str}",
+        "fr": f"Fuseau horaire changé en {tz_name}{now_str}",
+        "ru": f"Часовой пояс изменен на {tz_name}{now_str}"
+    })
+    subprocess.Popen(["notify-send", L({"es": "Zona Horaria", "en": "Timezone", "pt": "Fuso Horário", "fr": "Fuseau horaire", "ru": "Часовой пояс"}), msg, "-i", "preferences-system-time"])
+
+def build_tz_entry(tz_name, current_tz, now_utc):
+    try:
+        tz = zoneinfo.ZoneInfo(tz_name)
+        dt = now_utc.astimezone(tz)
+        offset = dt.strftime('%z')
+        offset_fmt = f"UTC{offset[:3]}:{offset[3:]}"
+        time_fmt = dt.strftime("%H:%M")
+        tz_abbr = dt.strftime("%Z")
+    except:
+        offset_fmt = "UTC"
+        time_fmt = "--:--"
+        tz_abbr = ""
+    
+    alias = TZ_ALIASES.get(tz_name, "")
+    alias_str = f" <span color='#7aa2f7'>[{alias}]</span>" if alias else ""
+    check = ICON_CHECK if current_tz == tz_name else "   "
+    label = f"{check} <b>{tz_name}</b>{alias_str} <span color='#888888'>({offset_fmt}, {tz_abbr})</span> <span color='#7dcfff'>{time_fmt}</span>"
+    return label
+
+def select_tz_from_list(zone_list, title_prompt):
+    current_tz = get_current_timezone()
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    
+    options = []
+    ordered_zones = []
+    
+    if current_tz in zone_list:
+        options.append(build_tz_entry(current_tz, current_tz, now_utc))
+        ordered_zones.append(current_tz)
+    
+    for z in zone_list:
+        if z != current_tz:
+            options.append(build_tz_entry(z, current_tz, now_utc))
+            ordered_zones.append(z)
+            
+    options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+    
+    tz_theme = 'window { width: 800px; } listview { columns: 1; lines: 12; } element-text { font: "JetBrainsMono Nerd Font Mono 11"; }'
+    
+    idx = show_rofi(title_prompt, options, markup=True, theme_str=tz_theme)
+    if idx == -1 or idx == len(options) - 1:
+        return False
+        
+    if idx < len(ordered_zones):
+        chosen_tz = ordered_zones[idx]
+        set_timezone(chosen_tz)
+        return True
+    return False
+
+def timezone_menu():
+    while True:
+        current_tz = get_current_timezone()
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+        
+        try:
+            curr_dt = now_utc.astimezone(zoneinfo.ZoneInfo(current_tz))
+            curr_time = curr_dt.strftime("%H:%M (%Z, UTC%z)")
+        except:
+            curr_time = ""
+            
+        cur_header = f"{ICON_CHECK} <b>{current_tz}</b> <span color='#7dcfff'>{curr_time}</span>"
+        
+        quick_lbl = f"⚡ " + L({"es": "Zonas Populares / Frecuentes", "en": "Popular / Quick Zones", "pt": "Zonas Populares / Rápidas", "fr": "Zones populaires / rapides", "ru": "Популярные часовые пояса"})
+        americas_lbl = f"🌎 " + L({"es": "América (Norte, Centro, Sur, Caribe)", "en": "Americas (North, Central, South, Caribbean)", "pt": "Américas (Norte, Central, Sul, Caribe)", "fr": "Amériques (Nord, Centre, Sud, Caraïbes)", "ru": "Америка (Северная, Центральная, Южная)"})
+        europe_lbl = f"🌍 " + L({"es": "Europa", "en": "Europe", "pt": "Europa", "fr": "Europe", "ru": "Европа"})
+        asia_lbl = f"🌏 " + L({"es": "Asia", "en": "Asia", "pt": "Ásia", "fr": "Asie", "ru": "Азия"})
+        africa_lbl = f"🌍 " + L({"es": "África", "en": "Africa", "pt": "África", "fr": "Afrique", "ru": "Африка"})
+        pacific_lbl = f"🌊 " + L({"es": "Oceanía & Pacífico", "en": "Oceania & Pacific", "pt": "Oceania & Pacífico", "fr": "Océanie & Pacifique", "ru": "Океания и Тихий океан"})
+        all_lbl = f"🌐 " + L({"es": "Todas las Zonas (Buscar en 400+ zonas)", "en": "All Timezones (Search across 400+ zones)", "pt": "Todos os Fusos (Buscar em mais de 400 zonas)", "fr": "Tous les fuseaux (Rechercher parmi 400+ zones)", "ru": "Все часовые пояса (Поиск среди 400+ поясов)"})
+        back_lbl = f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
+        
+        options = [
+            cur_header,
+            quick_lbl,
+            americas_lbl,
+            europe_lbl,
+            asia_lbl,
+            africa_lbl,
+            pacific_lbl,
+            all_lbl,
+            back_lbl
+        ]
+        
+        idx = show_rofi(L({"es": "Zona Horaria", "en": "Timezone", "pt": "Fuso Horário", "fr": "Fuseau horaire", "ru": "Часовой пояс"}), options, markup=True)
+        if idx == -1 or idx == len(options) - 1:
+            break
+            
+        if idx == 0:
+            pass
+        elif idx == 1:
+            quick_zones = [
+                'America/Chicago', 'America/New_York', 'America/Los_Angeles', 'America/Denver',
+                'America/Phoenix', 'America/Anchorage', 'America/Honolulu', 'America/Toronto',
+                'America/Vancouver', 'America/Panama', 'America/Bogota', 'America/Mexico_City',
+                'America/Cancun', 'America/Tijuana', 'America/Lima', 'America/Caracas',
+                'America/Santiago', 'America/Buenos_Aires', 'America/Sao_Paulo', 'America/Montevideo',
+                'America/Asuncion', 'America/La_Paz', 'America/Guayaquil', 'America/Costa_Rica',
+                'America/El_Salvador', 'America/Guatemala', 'America/Tegucigalpa', 'America/Managua',
+                'America/Santo_Domingo', 'America/Puerto_Rico', 'America/Havana', 'Europe/Madrid',
+                'Atlantic/Canary', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+                'Europe/Rome', 'Europe/Lisbon', 'Europe/Amsterdam', 'Europe/Brussels',
+                'Europe/Zurich', 'Europe/Vienna', 'Europe/Athens', 'Europe/Dublin',
+                'Europe/Stockholm', 'Europe/Oslo', 'Europe/Copenhagen', 'Europe/Warsaw',
+                'Europe/Prague', 'Europe/Kyiv', 'Europe/Moscow', 'Asia/Tokyo',
+                'Asia/Seoul', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Taipei',
+                'Asia/Singapore', 'Asia/Bangkok', 'Asia/Dubai', 'Asia/Riyadh',
+                'Asia/Kolkata', 'Asia/Jerusalem', 'Australia/Sydney', 'Australia/Perth',
+                'Pacific/Auckland', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Casablanca',
+                'Africa/Lagos', 'Africa/Nairobi', 'UTC'
+            ]
+            if select_tz_from_list(quick_zones, L({"es": "Zonas Populares (Escribe para buscar)", "en": "Popular Zones (Type to search)", "pt": "Zonas Populares (Digite para buscar)", "fr": "Zones populaires (Tapez pour chercher)", "ru": "Популярные пояса (Введите для поиска)"})):
+                break
+        elif idx == 2:
+            am_zones = [z for z in sorted(zoneinfo.available_timezones()) if (z.startswith('America/') or z.startswith('US/') or z.startswith('Canada/')) and not z.startswith(('SystemV/', 'Etc/'))]
+            if select_tz_from_list(am_zones, L({"es": "América (Escribe para buscar)", "en": "Americas (Type to search)", "pt": "Américas (Digite para buscar)", "fr": "Amériques (Tapez pour chercher)", "ru": "Америка (Введите для поиска)"})):
+                break
+        elif idx == 3:
+            eu_zones = [z for z in sorted(zoneinfo.available_timezones()) if (z.startswith('Europe/') or z.startswith('Atlantic/')) and not z.startswith(('SystemV/', 'Etc/'))]
+            if select_tz_from_list(eu_zones, L({"es": "Europa (Escribe para buscar)", "en": "Europe (Type to search)", "pt": "Europa (Digite para buscar)", "fr": "Europe (Tapez pour chercher)", "ru": "Европа (Введите для поиска)"})):
+                break
+        elif idx == 4:
+            as_zones = [z for z in sorted(zoneinfo.available_timezones()) if (z.startswith('Asia/') or z.startswith('Indian/')) and not z.startswith(('SystemV/', 'Etc/'))]
+            if select_tz_from_list(as_zones, L({"es": "Asia (Escribe para buscar)", "en": "Asia (Type to search)", "pt": "Ásia (Digite para buscar)", "fr": "Asie (Tapez pour chercher)", "ru": "Азия (Введите для поиска)"})):
+                break
+        elif idx == 5:
+            af_zones = [z for z in sorted(zoneinfo.available_timezones()) if z.startswith('Africa/') and not z.startswith(('SystemV/', 'Etc/'))]
+            if select_tz_from_list(af_zones, L({"es": "África (Escribe para buscar)", "en": "Africa (Type to search)", "pt": "África (Digite para buscar)", "fr": "Afrique (Tapez pour chercher)", "ru": "Африка (Введите для поиска)"})):
+                break
+        elif idx == 6:
+            oc_zones = [z for z in sorted(zoneinfo.available_timezones()) if (z.startswith('Pacific/') or z.startswith('Australia/')) and not z.startswith(('SystemV/', 'Etc/'))]
+            if select_tz_from_list(oc_zones, L({"es": "Oceanía & Pacífico (Escribe para buscar)", "en": "Oceania & Pacific (Type to search)", "pt": "Oceania & Pacífico (Digite para buscar)", "fr": "Océanie & Pacifique (Tapez pour chercher)", "ru": "Океания и Тихий океан (Введите для поиска)"})):
+                break
+        elif idx == 7:
+            all_clean = [z for z in sorted(zoneinfo.available_timezones()) if ('/' in z or z == 'UTC') and not z.startswith(('Etc/', 'SystemV/'))]
+            if select_tz_from_list(all_clean, L({"es": "Todas las Zonas (Escribe para buscar)", "en": "All Timezones (Type to search)", "pt": "Todos os Fusos (Digite para buscar)", "fr": "Tous les fuseaux (Tapez pour chercher)", "ru": "Все пояса (Введите для поиска)"})):
+                break
 
 
 def get_enabled_polybar_modules():
@@ -811,6 +1129,9 @@ def date_submenu(enabled, all_modules):
             label = f"{desc} -> {example}"
             options.append(f"{ICON_CHECK if current_fmt == fmt else '   '} {label}")
             
+        tz_opt_label = f"󰥔 " + L({"es": "Cambiar Zona Horaria...", "en": "Change Timezone...", "pt": "Alterar Fuso Horário...", "fr": "Changer le fuseau horaire...", "ru": "Изменить часовой пояс..."})
+        options.append(tz_opt_label)
+
         options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
         
         idx = show_rofi(L({"es": "Fecha y Hora", "en": "Date & Time", "pt": "Data e Hora", "fr": "Date et Heure", "ru": "Дата и время"}), options)
@@ -828,6 +1149,8 @@ def date_submenu(enabled, all_modules):
         elif 1 <= idx <= len(formats):
             config["format"] = formats[idx-1][0]
             save_config(config)
+        elif idx == len(options) - 2:
+            timezone_menu()
 
 def get_current_cursor():
     cursor_file = os.path.expanduser("~/.config/dotfiles/cursor")
@@ -1080,6 +1403,7 @@ def desktop_menu():
 def main_menu():
     while True:
         lang_text = L({"es": "Idioma", "en": "Language", "pt": "Idioma", "fr": "Langue", "ru": "Язык"})
+        tz_text = L({"es": "Zona Horaria", "en": "Timezone", "pt": "Fuso Horário", "fr": "Fuseau horaire", "ru": "Часовой пояс"})
         kb_text = L({"es": "Teclado", "en": "Keyboard", "pt": "Teclado", "fr": "Clavier", "ru": "Клавиатура"})
         env_text = L({"es": "Entorno", "en": "Desktop", "pt": "Ambiente", "fr": "Environnement", "ru": "Окружение"})
         cursor_text = L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"})
@@ -1088,6 +1412,7 @@ def main_menu():
         
         options = [
             f"{ICON_LANG} {lang_text}",
+            f"{ICON_TIME} {tz_text}",
             f"{ICON_KB} {kb_text}",
             f"󰕮 {env_text}",
             f"{ICON_CURSOR} {cursor_text}",
@@ -1102,12 +1427,14 @@ def main_menu():
         if idx == 0:
             language_menu()
         elif idx == 1:
-            keyboard_menu()
+            timezone_menu()
         elif idx == 2:
-            desktop_menu()
+            keyboard_menu()
         elif idx == 3:
-            cursor_submenu()
+            desktop_menu()
         elif idx == 4:
+            cursor_submenu()
+        elif idx == 5:
             wallpaper_menu()
         else:
             break
@@ -1212,6 +1539,8 @@ def main():
         all_modules = ["date", "temperature", "cpu", "memory", "nvidia", "npu", "pulseaudio", "mic", "brightness", "wlan", "bluetooth", "battery", "camera", "powermenu"]
         if sys.argv[1] == "date":
             date_submenu(enabled, all_modules)
+        elif sys.argv[1] == "timezone":
+            timezone_menu()
         elif sys.argv[1] == "temperature":
             temperature_submenu(enabled, all_modules)
         elif sys.argv[1] == "pulseaudio":

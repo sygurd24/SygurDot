@@ -5,6 +5,9 @@ export XDG_CURRENT_DESKTOP=bspwm
 export XDG_SESSION_DESKTOP=bspwm
 export XDG_SESSION_TYPE=x11
 
+# Load user locale and timezone
+[ -f "$HOME/.config/dotfiles/locale.sh" ] && . "$HOME/.config/dotfiles/locale.sh"
+
 # Start GNOME Keyring Daemon (critical for Gemini CLI and other apps to store keys securely)
 if [ -z "$GNOME_KEYRING_CONTROL" ]; then
     eval $(gnome-keyring-daemon --start --components=pkcs11,secrets,ssh)
@@ -19,5 +22,5 @@ export GTK2_RC_FILES="$HOME/.gtkrc-2.0"
 # Upload X11 environment into DBus/Systemd user session
 # Critical for Thunar/GVFS/Portals to start without timeouts via display managers
 if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-    dbus-update-activation-environment --systemd DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE GNOME_KEYRING_CONTROL SSH_AUTH_SOCK
+    dbus-update-activation-environment --systemd DISPLAY XAUTHORITY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE GNOME_KEYRING_CONTROL SSH_AUTH_SOCK TZ
 fi

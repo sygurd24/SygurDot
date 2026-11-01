@@ -27,6 +27,9 @@ update_wallpaper() {
         fi
     else
         # Dynamic mode logic
+        if [ -z "$TZ" ] && [ -f "$HOME/.config/dotfiles/timezone" ]; then
+            export TZ=$(cat "$HOME/.config/dotfiles/timezone")
+        fi
         CURRENT_TIME=`date +"%H%M"`
         TIME_VAL=$((10#$CURRENT_TIME))
         

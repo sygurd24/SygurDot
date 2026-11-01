@@ -12,6 +12,17 @@ THEME_STR = 'window { width: 500px; } listview { lines: 8; } element-text { font
 ICON_CHECK = ""
 
 def set_lang_locale():
+    tz_file = os.path.expanduser("~/.config/dotfiles/timezone")
+    if "TZ" not in os.environ and os.path.exists(tz_file):
+        try:
+            with open(tz_file, "r") as f:
+                tz = f.read().strip()
+                if tz:
+                    os.environ["TZ"] = tz
+                    time.tzset()
+        except:
+            pass
+
     lang_file = os.path.expanduser("~/.config/dotfiles/language")
     lang = "en"
     if os.path.exists(lang_file):
@@ -86,6 +97,9 @@ def main():
         else:
             options.append(f"  {label}")
             
+    tz_label = f"󰥔 " + L(lang, {"es": "Cambiar Zona Horaria...", "en": "Change Timezone...", "pt": "Alterar Fuso Horário...", "fr": "Changer le fuseau horaire...", "ru": "Изменить часовой пояс..."})
+    options.append(f"  {tz_label}")
+
     input_str = "\n".join(options)
     prompt = L(lang, {"es": "Formato de Fecha y Hora", "en": "Date & Time Format", "pt": "Formato de Data e Hora", "fr": "Format de Date et Heure", "ru": "Формат даты и времени"})
     
@@ -99,6 +113,8 @@ def main():
         if 0 <= idx < len(formats):
             config["format"] = formats[idx][0]
             save_config(config)
+        elif idx == len(formats):
+            subprocess.Popen(["python3", os.path.expanduser("~/dotfiles/config/rofi/scripts/config-menu.py"), "timezone"])
     except:
         pass
 
