@@ -400,15 +400,6 @@ def set_timezone(tz_name):
     except:
         pass
 
-    # Notify Polybar via IPC (with timeout to never block)
-    penv = dict(os.environ)
-    if "DISPLAY" not in penv:
-        penv["DISPLAY"] = ":0"
-    try:
-        subprocess.run(["polybar-msg", "cmd", "restart"], env=penv, capture_output=True, timeout=1)
-    except:
-        pass
-            
     try:
         subprocess.run(["killall", "-q", "-USR1", "dynamic_wallpaper.sh"])
     except:
