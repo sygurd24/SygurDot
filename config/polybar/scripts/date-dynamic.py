@@ -9,15 +9,18 @@ CONFIG_FILE = os.path.expanduser("~/.config/polybar/date.json")
 
 def set_lang_locale():
     tz_file = os.path.expanduser("~/.config/dotfiles/timezone")
-    if "TZ" not in os.environ and os.path.exists(tz_file):
+    tz = ""
+    if os.path.exists(tz_file):
         try:
             with open(tz_file, "r") as f:
                 tz = f.read().strip()
-                if tz:
-                    os.environ["TZ"] = tz
-                    time.tzset()
         except:
             pass
+    if not tz:
+        tz = os.environ.get("TZ", "")
+    if tz and os.environ.get("TZ") != tz:
+        os.environ["TZ"] = tz
+        time.tzset()
 
     lang_file = os.path.expanduser("~/.config/dotfiles/language")
     lang = "en"

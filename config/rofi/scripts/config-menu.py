@@ -19,6 +19,13 @@ ICON_TIME = "󰥔 "
 ICON_KB = "󰌌 "
 ICON_CHECK = " "
 ICON_BACK = " "
+ICON_BOLT = " "
+ICON_EARTH = "󰇧 "
+ICON_MAP = "󰗷 "
+ICON_COMPASS = "󰆐 "
+ICON_SUN = "󰖙 "
+ICON_PLANE = "󰀝 "
+ICON_GLOBE = "󰖟 "
 ICON_ES = "󰗊 ES "
 ICON_EN = "󰗊 EN "
 ICON_PT = "󰗊 PT "
@@ -393,21 +400,37 @@ def set_timezone(tz_name):
     except:
         pass
 
-    # Try polybar IPC restart first
-    res = subprocess.run(["polybar-msg", "cmd", "restart"], capture_output=True)
-    if res.returncode != 0:
-        poly_launch = os.path.expanduser("~/.config/polybar/launch.sh")
-        if os.path.exists(poly_launch):
-            try:
-                poly_env = dict(os.environ)
-                if "DISPLAY" not in poly_env:
-                    poly_env["DISPLAY"] = ":0"
-                subprocess.Popen(["bash", poly_launch], env=poly_env)
-            except:
-                pass
+    # Notify Polybar via IPC (with timeout to never block)
+    penv = dict(os.environ)
+    if "DISPLAY" not in penv:
+        penv["DISPLAY"] = ":0"
+    try:
+        subprocess.run(["polybar-msg", "cmd", "restart"], env=penv, capture_output=True, timeout=1)
+    except:
+        pass
             
     try:
         subprocess.run(["killall", "-q", "-USR1", "dynamic_wallpaper.sh"])
+    except:
+        pass
+
+    # Try setting system timezone via timedatectl (using GUI polkit agent)
+    try:
+        curr_sys_tz = ""
+        if os.path.islink("/etc/localtime"):
+            curr_sys_tz = os.readlink("/etc/localtime").split("/zoneinfo/")[-1]
+        if curr_sys_tz != tz_name:
+            penv = dict(os.environ)
+            if "DISPLAY" not in penv:
+                penv["DISPLAY"] = ":0"
+            subprocess.Popen(
+                ["timedatectl", "set-timezone", tz_name],
+                env=penv,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
     except:
         pass
 
@@ -487,15 +510,21 @@ def timezone_menu():
         except:
             curr_time = ""
             
-        cur_header = f"{ICON_CHECK} <b>{current_tz}</b> <span color='#7dcfff'>{curr_time}</span>"
+        cur_header = f"{ICON_CHECK} " + L({
+            "es": "Zona Actual (Re-aplicar):",
+            "en": "Current Zone (Re-apply):",
+            "pt": "Fuso Atual (Re-aplicar):",
+            "fr": "Fuseau actuel (Réappliquer):",
+            "ru": "Текущий пояс (Применить):"
+        }) + f" <b>{current_tz}</b> <span color='#7dcfff'>({curr_time})</span>"
         
-        quick_lbl = f"⚡ " + L({"es": "Zonas Populares / Frecuentes", "en": "Popular / Quick Zones", "pt": "Zonas Populares / Rápidas", "fr": "Zones populaires / rapides", "ru": "Популярные часовые пояса"})
-        americas_lbl = f"🌎 " + L({"es": "América (Norte, Centro, Sur, Caribe)", "en": "Americas (North, Central, South, Caribbean)", "pt": "Américas (Norte, Central, Sul, Caribe)", "fr": "Amériques (Nord, Centre, Sud, Caraïbes)", "ru": "Америка (Северная, Центральная, Южная)"})
-        europe_lbl = f"🌍 " + L({"es": "Europa", "en": "Europe", "pt": "Europa", "fr": "Europe", "ru": "Европа"})
-        asia_lbl = f"🌏 " + L({"es": "Asia", "en": "Asia", "pt": "Ásia", "fr": "Asie", "ru": "Азия"})
-        africa_lbl = f"🌍 " + L({"es": "África", "en": "Africa", "pt": "África", "fr": "Afrique", "ru": "Африка"})
-        pacific_lbl = f"🌊 " + L({"es": "Oceanía & Pacífico", "en": "Oceania & Pacific", "pt": "Oceania & Pacífico", "fr": "Océanie & Pacifique", "ru": "Океания и Тихий океан"})
-        all_lbl = f"🌐 " + L({"es": "Todas las Zonas (Buscar en 400+ zonas)", "en": "All Timezones (Search across 400+ zones)", "pt": "Todos os Fusos (Buscar em mais de 400 zonas)", "fr": "Tous les fuseaux (Rechercher parmi 400+ zones)", "ru": "Все часовые пояса (Поиск среди 400+ поясов)"})
+        quick_lbl = f"{ICON_BOLT} " + L({"es": "Zonas Populares / Frecuentes", "en": "Popular / Quick Zones", "pt": "Zonas Populares / Rápidas", "fr": "Zones populares / rapides", "ru": "Популярные часовые пояса"})
+        americas_lbl = f"{ICON_EARTH} " + L({"es": "América (Norte, Centro, Sur, Caribe)", "en": "Americas (North, Central, South, Caribbean)", "pt": "Américas (Norte, Central, Sul, Caribe)", "fr": "Amériques (Nord, Centre, Sud, Caraïbes)", "ru": "Америка (Северная, Центральная, Южная)"})
+        europe_lbl = f"{ICON_MAP} " + L({"es": "Europa", "en": "Europe", "pt": "Europa", "fr": "Europe", "ru": "Европа"})
+        asia_lbl = f"{ICON_COMPASS} " + L({"es": "Asia", "en": "Asia", "pt": "Ásia", "fr": "Asie", "ru": "Азия"})
+        africa_lbl = f"{ICON_SUN} " + L({"es": "África", "en": "Africa", "pt": "África", "fr": "Afrique", "ru": "Африка"})
+        pacific_lbl = f"{ICON_PLANE} " + L({"es": "Oceanía / Pacífico", "en": "Oceania / Pacific", "pt": "Oceania / Pacífico", "fr": "Océanie / Pacifique", "ru": "Океания / Тихий океан"})
+        all_lbl = f"{ICON_GLOBE} " + L({"es": "Todas las Zonas (Buscar en 400+ zonas)", "en": "All Timezones (Search across 400+ zones)", "pt": "Todos os Fusos (Buscar em mais de 400 zonas)", "fr": "Tous les fuseaux (Rechercher parmi 400+ zones)", "ru": "Все часовые пояса (Поиск среди 400+ поясов)"})
         back_lbl = f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
         
         options = [
@@ -515,7 +544,8 @@ def timezone_menu():
             break
             
         if idx == 0:
-            pass
+            set_timezone(current_tz)
+            break
         elif idx == 1:
             quick_zones = [
                 'America/Chicago', 'America/New_York', 'America/Los_Angeles', 'America/Denver',
@@ -557,7 +587,7 @@ def timezone_menu():
                 break
         elif idx == 6:
             oc_zones = [z for z in sorted(zoneinfo.available_timezones()) if (z.startswith('Pacific/') or z.startswith('Australia/')) and not z.startswith(('SystemV/', 'Etc/'))]
-            if select_tz_from_list(oc_zones, L({"es": "Oceanía & Pacífico (Escribe para buscar)", "en": "Oceania & Pacific (Type to search)", "pt": "Oceania & Pacífico (Digite para buscar)", "fr": "Océanie & Pacifique (Tapez pour chercher)", "ru": "Океания и Тихий океан (Введите для поиска)"})):
+            if select_tz_from_list(oc_zones, L({"es": "Oceanía / Pacífico (Escribe para buscar)", "en": "Oceania / Pacific (Type to search)", "pt": "Oceania / Pacífico (Digite para buscar)", "fr": "Océanie / Pacifique (Tapez pour chercher)", "ru": "Океания / Тихий океан (Введите для поиска)"})):
                 break
         elif idx == 7:
             all_clean = [z for z in sorted(zoneinfo.available_timezones()) if ('/' in z or z == 'UTC') and not z.startswith(('Etc/', 'SystemV/'))]

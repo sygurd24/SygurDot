@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -z "$TZ" ] && [ -f "$HOME/.config/dotfiles/timezone" ]; then
+if [ -f "$HOME/.config/dotfiles/timezone" ]; then
     export TZ=$(cat "$HOME/.config/dotfiles/timezone")
 fi
 
