@@ -393,15 +393,18 @@ def set_timezone(tz_name):
     except:
         pass
 
-    poly_launch = os.path.expanduser("~/.config/polybar/launch.sh")
-    if os.path.exists(poly_launch):
-        try:
-            poly_env = dict(os.environ)
-            if "DISPLAY" not in poly_env:
-                poly_env["DISPLAY"] = ":0"
-            subprocess.Popen(["bash", poly_launch], env=poly_env)
-        except:
-            pass
+    # Try polybar IPC restart first
+    res = subprocess.run(["polybar-msg", "cmd", "restart"], capture_output=True)
+    if res.returncode != 0:
+        poly_launch = os.path.expanduser("~/.config/polybar/launch.sh")
+        if os.path.exists(poly_launch):
+            try:
+                poly_env = dict(os.environ)
+                if "DISPLAY" not in poly_env:
+                    poly_env["DISPLAY"] = ":0"
+                subprocess.Popen(["bash", poly_launch], env=poly_env)
+            except:
+                pass
             
     try:
         subprocess.run(["killall", "-q", "-USR1", "dynamic_wallpaper.sh"])

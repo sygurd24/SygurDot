@@ -5,6 +5,9 @@
 
 # Terminar las instancias de barra que ya se estén ejecutando
 pkill -x polybar 2>/dev/null
+pkill -f 'polybar/scripts/.*-dynamic.py' 2>/dev/null || true
+pkill -f 'polybar/scripts/mic-status.py' 2>/dev/null || true
+pkill -f 'polybar/scripts/wifi-status.sh' 2>/dev/null || true
 
 # Esperar a que los procesos se hayan cerrado (con timeout)
 timeout=5
