@@ -35,6 +35,8 @@ ICON_POLYBAR = "󱓡 "
 ICON_TEMP = " "
 ICON_CURSOR = "󰆿 "
 ICON_WALLPAPER = "󰸉 "
+ICON_LOCK = "󰌾 "
+ICON_SCREEN = "󰹑 "
 
 
 def get_current_lang():
@@ -1338,6 +1340,95 @@ def wallpaper_menu():
                     with open(mode_file, "w") as f: f.write("custom")
                     subprocess.run(["pkill", "-USR1", "-f", "dynamic_wallpaper.sh"])
 
+def get_current_lockscreen_mode():
+    mode_file = os.path.expanduser("~/.config/dotfiles/lockscreen_mode")
+    if os.path.exists(mode_file):
+        try:
+            with open(mode_file, "r") as f:
+                val = f.read().strip()
+                if val in ("wallpaper", "screen"):
+                    return val
+        except OSError:
+            pass
+    return "wallpaper"
+
+def set_lockscreen_mode(mode):
+    mode_file = os.path.expanduser("~/.config/dotfiles/lockscreen_mode")
+    os.makedirs(os.path.dirname(mode_file), exist_ok=True)
+    with open(mode_file, "w") as f:
+        f.write(mode + "\n")
+
+    if mode == "wallpaper" and not os.path.exists("/tmp/current_wallpaper_blurred.png"):
+        subprocess.run(["killall", "-q", "-USR1", "dynamic_wallpaper.sh"])
+
+    if mode == "screen":
+        msg = L({
+            "es": "Bloqueo configurado: Pantalla actual difuminada",
+            "en": "Lock screen set to: Blurred current screen",
+            "pt": "Bloqueio definido: Tela atual desfocada",
+            "fr": "Verrouillage défini : Écran actuel flouté",
+            "ru": "Блокировка: Размытый текущий экран"
+        })
+    else:
+        msg = L({
+            "es": "Bloqueo configurado: Fondo de pantalla difuminado",
+            "en": "Lock screen set to: Blurred wallpaper",
+            "pt": "Bloqueio definido: Papel de parede desfocado",
+            "fr": "Verrouillage défini : Fond d'écran flouté",
+            "ru": "Блокировка: Размытые обои"
+        })
+
+    title = L({
+        "es": "Pantalla de Bloqueo",
+        "en": "Lock Screen",
+        "pt": "Tela de Bloqueio",
+        "fr": "Écran de verrouillage",
+        "ru": "Экран блокировки"
+    })
+    subprocess.Popen(["notify-send", title, msg, "-i", "system-lock-screen"])
+
+def lockscreen_menu():
+    while True:
+        current_mode = get_current_lockscreen_mode()
+
+        wp_lbl = L({
+            "es": "Fondo de pantalla difuminado",
+            "en": "Blurred wallpaper",
+            "pt": "Papel de parede desfocado",
+            "fr": "Fond d'écran flouté",
+            "ru": "Размытые обои"
+        })
+        screen_lbl = L({
+            "es": "Pantalla actual difuminada",
+            "en": "Blurred current screen",
+            "pt": "Tela atual desfocada",
+            "fr": "Écran actuel flouté",
+            "ru": "Размытый текущий экран"
+        })
+
+        options = [
+            f"{ICON_CHECK if current_mode == 'wallpaper' else '   '} {ICON_WALLPAPER}{wp_lbl}",
+            f"{ICON_CHECK if current_mode == 'screen' else '   '} {ICON_SCREEN}{screen_lbl}",
+            f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
+        ]
+
+        title = L({
+            "es": "Pantalla de Bloqueo",
+            "en": "Lock Screen",
+            "pt": "Tela de Bloqueio",
+            "fr": "Écran de verrouillage",
+            "ru": "Экран блокировки"
+        })
+        idx = show_rofi(title, options)
+
+        if idx == -1 or idx == len(options) - 1:
+            break
+
+        if idx == 0:
+            set_lockscreen_mode("wallpaper")
+        elif idx == 1:
+            set_lockscreen_mode("screen")
+
 def picom_submenu():
     import re
     picom_conf_path = os.path.expanduser("~/dotfiles/config/picom/picom.conf")
@@ -1432,6 +1523,7 @@ def main_menu():
         env_text = L({"es": "Entorno", "en": "Desktop", "pt": "Ambiente", "fr": "Environnement", "ru": "Окружение"})
         cursor_text = L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"})
         wallpaper_text = L({"es": "Fondo", "en": "Wallpaper", "pt": "Papel de Parede", "fr": "Fond d'écran", "ru": "Обои"})
+        lock_text = L({"es": "Pantalla de Bloqueo", "en": "Lock Screen", "pt": "Tela de Bloqueio", "fr": "Écran de verrouillage", "ru": "Экран блокировки"})
         config_text = L({"es": "Configuración", "en": "Configuration", "pt": "Configuração", "fr": "Configuration", "ru": "Настройка"})
         
         options = [
@@ -1440,7 +1532,8 @@ def main_menu():
             f"{ICON_KB} {kb_text}",
             f"󰕮 {env_text}",
             f"{ICON_CURSOR} {cursor_text}",
-            f"{ICON_WALLPAPER} {wallpaper_text}"
+            f"{ICON_WALLPAPER} {wallpaper_text}",
+            f"{ICON_LOCK} {lock_text}"
         ]
         
         idx = show_rofi(config_text, options)
@@ -1460,6 +1553,8 @@ def main_menu():
             cursor_submenu()
         elif idx == 5:
             wallpaper_menu()
+        elif idx == 6:
+            lockscreen_menu()
         else:
             break
 
@@ -1575,6 +1670,8 @@ def main():
             display_submenu("brightness", enabled, all_modules, L({"es": "Brillo", "en": "Brightness", "pt": "Brilho", "fr": "Luminosité", "ru": "Яркость"}), "~/.config/polybar/brightness.json")
         elif sys.argv[1] == "camera":
             camera_submenu(enabled, all_modules)
+        elif sys.argv[1] == "lockscreen":
+            lockscreen_menu()
         return
     main_menu()
 

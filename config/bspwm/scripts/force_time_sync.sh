@@ -2,8 +2,8 @@
 LOG_FILE="/tmp/wallpaper_sync.log"
 echo "Starting sync at $(date)" > "$LOG_FILE"
 
-# Start wallpaper immediately so user isn't looking at black screen
-"$HOME/.config/bspwm/scripts/dynamic_wallpaper.sh" &
+# Ensure wallpaper script is running (without duplicating if bspwmrc already started it)
+pgrep -f "dynamic_wallpaper.sh" >/dev/null || "$HOME/.config/bspwm/scripts/dynamic_wallpaper.sh" &
 
 # Wait for internet connection (check every 2 seconds)
 MAX_RETRIES=30
@@ -26,9 +26,11 @@ echo "Network connected." >> "$LOG_FILE"
 # timedatectl set-ntp true 2>> "$LOG_FILE"
 # (Skipped because it hangs without authentication)
 
-echo "Restarting wallpaper script..." >> "$LOG_FILE"
-# Restart the wallpaper script to pick up the new time immediately
-killall -q dynamic_wallpaper.sh
-sleep 1
-"$HOME/.config/bspwm/scripts/dynamic_wallpaper.sh" &
+echo "Signaling wallpaper script to refresh..." >> "$LOG_FILE"
+# Notify the running wallpaper script via USR1 instead of killing it mid-blur
+if pgrep -f "dynamic_wallpaper.sh" >/dev/null; then
+    pkill -USR1 -f "dynamic_wallpaper.sh"
+else
+    "$HOME/.config/bspwm/scripts/dynamic_wallpaper.sh" &
+fi
 echo "Done." >> "$LOG_FILE"

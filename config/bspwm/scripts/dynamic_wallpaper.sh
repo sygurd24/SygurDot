@@ -49,14 +49,27 @@ update_wallpaper() {
         LAST_IMG=`cat "$STATE_FILE" 2>/dev/null`
     fi
 
-    if [ "$IMG" != "$LAST_IMG" ] || [ ! -f "$STATE_FILE" ]; then
+    BLUR_IMG="/tmp/current_wallpaper_blurred.png"
+    BLUR_LOCK="${XDG_RUNTIME_DIR:-/tmp}/wallpaper_blur.lock"
+
+    if [ "$IMG" != "$LAST_IMG" ] || [ ! -f "$STATE_FILE" ] || [ ! -s "$BLUR_IMG" ]; then
         if [ -f "$IMG" ]; then
-            feh --bg-fill --no-fehbg "$IMG"
-            echo "$IMG" > "$STATE_FILE"
+            if [ "$IMG" != "$LAST_IMG" ] || [ ! -f "$STATE_FILE" ]; then
+                feh --bg-fill --no-fehbg "$IMG"
+                echo "$IMG" > "$STATE_FILE"
+            fi
             (
-                magick "$IMG" -resize 1920x1080^ -gravity center -extent 1920x1080 -modulate 100,120 -filter Gaussian -blur 0x10 /tmp/lock_blur.png && \
-                mv /tmp/lock_blur.png /tmp/current_wallpaper_blurred.png
-                
+                exec 8>"$BLUR_LOCK"
+                flock -n 8 || exit 0
+                RES=$(xrandr --current 2>/dev/null | awk '/\*/{print $1; exit}')
+                RES="${RES:-1920x1080}"
+                TMP_BLUR="/tmp/lock_blur.$$.png"
+                if magick "$IMG" -resize "${RES}^" -gravity center -extent "$RES" -modulate 100,120 -filter Gaussian -blur 0x10 "$TMP_BLUR"; then
+                    mv -f "$TMP_BLUR" "$BLUR_IMG"
+                else
+                    rm -f "$TMP_BLUR"
+                fi
+
                 BRIGHTNESS=`magick "$IMG" -colorspace Gray -format "%[fx:int(mean*100)]" info: 2>/dev/null || echo "0"`
                 if [ "$BRIGHTNESS" -gt 60 ]; then
                     echo "333333" > /tmp/lock_foreground_color

@@ -76,8 +76,9 @@ bspc rule -a Screenkey manage=off
 bspc rule -a 'firefox' state=tiled focus=on follow=on
 bspc rule -a 'Firefox' state=tiled focus=on follow=on
 
-# Bloqueo automatico en suspension/hibernacion
-xss-lock -- "$HOME/.config/bspwm/scripts/lock.sh" &
+# Bloqueo automatico en suspension/hibernacion (evitar duplicados al recargar bspwm)
+pkill -x xss-lock 2>/dev/null
+xss-lock --transfer-sleep-lock -- "$HOME/.config/bspwm/scripts/lock.sh" &
 
 # Launchers
 ~/.config/polybar/launch.sh &
