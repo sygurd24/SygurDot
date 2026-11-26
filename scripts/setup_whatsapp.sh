@@ -34,7 +34,7 @@ cat <<EOF > "$DESKTOP_FILE"
 Version=1.0
 Name=WhatsApp Web - Chrome
 Comment=WhatsApp Web App simulando Windows para Video Llamadas
-Exec=google-chrome --app=https://web.whatsapp.com/ --password-store=basic --user-agent="$WINDOWS_UA"
+Exec=google-chrome --app=https://web.whatsapp.com/ --password-store=basic --check-for-update-interval=31536000 --simulate-outdated-no-au="Tue, 31 Dec 2099 23:59:59 GMT" --user-agent="$WINDOWS_UA"
 Terminal=false
 Type=Application
 Icon=whatsapp

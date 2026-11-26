@@ -32,9 +32,15 @@ done | rofi -dmenu -i -p " Clipboard" -theme "$HOME/.config/rofi/clipboard.rasi"
 if [[ "$SELECTED" == Image\ * ]]; then
     img_id="${SELECTED#Image }"
     img_path="/tmp/greenclip/${img_id}.png"
-    [ -f "$img_path" ] && xclip -selection clipboard -t image/png -i "$img_path"
+    if [ -f "$img_path" ]; then
+        if [ -x "$HOME/.config/bspwm/scripts/clipboard_image.py" ]; then
+            "$HOME/.config/bspwm/scripts/clipboard_image.py" "$img_path"
+        else
+            xclip -selection clipboard -t image/png -i "$img_path" </dev/null >/dev/null 2>&1
+        fi
+    fi
 else
-    printf '%s' "$SELECTED" | xclip -selection clipboard
+    printf '%s' "$SELECTED" | xclip -selection clipboard </dev/null >/dev/null 2>&1
 fi
 
 # 5. Auto-paste into the focused window

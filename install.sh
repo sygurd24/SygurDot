@@ -208,7 +208,7 @@ setup_battery_threshold() {
 
 
 # 1. Install dependencies
-PACKAGES="bspwm sxhkd polybar picom rofi kitty zsh thunar gvfs gvfs-backends gtk2-engines-murrine gtk2-engines-pixbuf lsd bat xinput xss-lock feh scrot maim slop imagemagick libinput-tools libnotify-bin dunst arc-theme papirus-icon-theme firefox xclip xdotool python3 python3-dbus python3-gi python3-psutil python3-pip python3-venv python3-setuptools gir1.2-glib-2.0 libxkbcommon0 libxkbcommon-x11-0 cava pavucontrol btop flameshot expect network-manager nm-connection-editor bc playerctl brightnessctl bluez blueman pipewire pipewire-pulse pipewire-alsa wireplumber libspa-0.2-bluetooth pulseaudio-utils ffmpeg psmisc lsof upower git wget curl fontconfig yad xorg xinit x11-xserver-utils dbus-x11 linux-headers-amd64 build-essential libegl1-mesa-dev libgl1-mesa-dev"
+PACKAGES="bspwm sxhkd polybar picom rofi kitty zsh thunar gvfs gvfs-backends gtk2-engines-murrine gtk2-engines-pixbuf lsd bat xinput xss-lock feh scrot maim slop imagemagick libinput-tools libnotify-bin dunst arc-theme papirus-icon-theme firefox xclip xdotool python3 python3-dbus python3-gi python3-psutil python3-pip python3-venv python3-setuptools gir1.2-glib-2.0 gir1.2-gtk-3.0 libxkbcommon0 libxkbcommon-x11-0 cava pavucontrol btop flameshot expect network-manager nm-connection-editor bc playerctl brightnessctl bluez blueman pipewire pipewire-pulse pipewire-alsa wireplumber libspa-0.2-bluetooth pulseaudio-utils ffmpeg psmisc lsof upower git wget curl fontconfig yad xorg xinit x11-xserver-utils dbus-x11 linux-headers-amd64 build-essential libegl1-mesa-dev libgl1-mesa-dev"
 
 setup_graphics() {
     log "Configuring Graphics (Hybrid or Integrated)..."
