@@ -102,6 +102,7 @@ Si notas que los módulos de la batería o del Wi-Fi no aparecen en tu panel, se
 | `Super + F` | Navegador Web (Firefox) |
 | `Super + V` | Historial del Portapapeles (Greenclip) |
 | `Super + Shift + S` | Captura de Pantalla Seleccionada |
+| `Super + Shift + A` | Dictado de Voz Local con Whisper (Grabar / Transcribir al Portapapeles) |
 | `Print` / `Super + Shift + F` | Flameshot (GUI Completa) |
 | `Super + Escape` | Recargar Atajos (sxhkd) |
 | `Super + Alt + R` | Reiniciar bspwm |

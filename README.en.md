@@ -102,6 +102,7 @@ If you notice that your battery or network modules are not showing up properly o
 | `Super + F` | Web Browser (Firefox) |
 | `Super + V` | Clipboard History (Greenclip) |
 | `Super + Shift + S` | Selected Screenshot |
+| `Super + Shift + A` | Local Voice Dictation with Whisper (Record / Transcribe to Clipboard) |
 | `Print` / `Super + Shift + F` | Flameshot (Full GUI) |
 | `Super + Escape` | Reload Shortcuts (sxhkd) |
 | `Super + Alt + R` | Restart bspwm |

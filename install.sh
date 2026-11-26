@@ -208,7 +208,7 @@ setup_battery_threshold() {
 
 
 # 1. Install dependencies
-PACKAGES="bspwm sxhkd polybar picom rofi kitty zsh thunar gvfs gvfs-backends gtk2-engines-murrine gtk2-engines-pixbuf lsd bat xinput xss-lock feh scrot maim slop imagemagick libinput-tools libnotify-bin dunst arc-theme papirus-icon-theme firefox xclip xdotool python3 python3-dbus python3-gi python3-psutil python3-pip python3-venv python3-setuptools gir1.2-glib-2.0 libxkbcommon0 libxkbcommon-x11-0 cava pavucontrol btop flameshot expect network-manager nm-connection-editor bc playerctl brightnessctl bluez blueman pipewire pipewire-pulse pipewire-alsa wireplumber libspa-0.2-bluetooth pulseaudio-utils psmisc lsof upower git wget curl fontconfig yad xorg xinit x11-xserver-utils dbus-x11 linux-headers-amd64 build-essential libegl1-mesa-dev libgl1-mesa-dev"
+PACKAGES="bspwm sxhkd polybar picom rofi kitty zsh thunar gvfs gvfs-backends gtk2-engines-murrine gtk2-engines-pixbuf lsd bat xinput xss-lock feh scrot maim slop imagemagick libinput-tools libnotify-bin dunst arc-theme papirus-icon-theme firefox xclip xdotool python3 python3-dbus python3-gi python3-psutil python3-pip python3-venv python3-setuptools gir1.2-glib-2.0 libxkbcommon0 libxkbcommon-x11-0 cava pavucontrol btop flameshot expect network-manager nm-connection-editor bc playerctl brightnessctl bluez blueman pipewire pipewire-pulse pipewire-alsa wireplumber libspa-0.2-bluetooth pulseaudio-utils ffmpeg psmisc lsof upower git wget curl fontconfig yad xorg xinit x11-xserver-utils dbus-x11 linux-headers-amd64 build-essential libegl1-mesa-dev libgl1-mesa-dev"
 
 setup_graphics() {
     log "Configuring Graphics (Hybrid or Integrated)..."
@@ -706,6 +706,9 @@ chmod +x "$DOTFILES_DIR/config/sxhkd/sxhkdrc" 2>/dev/null || true
 if [ -d "$DOTFILES_DIR/face-auth" ]; then
     find "$DOTFILES_DIR/face-auth" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} + 2>/dev/null || true
 fi
+if [ -d "$DOTFILES_DIR/scripts" ]; then
+    find "$DOTFILES_DIR/scripts" -type f -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
+fi
 
 # Enable Bluetooth Service
 if command -v systemctl &> /dev/null; then
@@ -945,7 +948,21 @@ PYEOF
     fi
 }
 
+setup_whisper() {
+    if [ ! -f "$DOTFILES_DIR/scripts/setup_whisper.sh" ]; then
+        return 0
+    fi
+
+    log "Setting up local Whisper voice dictation (Super + Shift + A)..."
+    if bash "$DOTFILES_DIR/scripts/setup_whisper.sh"; then
+        log "Whisper dictation ready!"
+    else
+        warn "Whisper dictation setup failed. You can retry later with: ~/dotfiles/scripts/setup_whisper.sh"
+    fi
+}
+
 setup_battery_threshold || true
 setup_face_auth || true
+setup_whisper || true
 
 log "Installation complete!"

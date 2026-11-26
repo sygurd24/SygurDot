@@ -258,3 +258,7 @@ super + alt + space
 # Menu de Fecha (Rofi)
 super + shift + d
 	"$HOME/.config/polybar/scripts/rofi-date.py"
+
+# Dictado de voz con Whisper (Toggle grabar / transcribir al portapapeles)
+super + shift + a
+	"$HOME/.config/bspwm/scripts/whisper_dictate.py" --toggle

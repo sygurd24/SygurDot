@@ -38,6 +38,15 @@ ICON_WALLPAPER = "󰸉 "
 ICON_LOCK = "󰌾 "
 ICON_SCREEN = "󰹑 "
 ICON_FACE = "󰈷 "
+ICON_WHISPER = "󰍬 "
+ICON_BRAIN = "󰧑 "
+ICON_CHIP = "󰘚 "
+ICON_SNOW = "󰜗 "
+ICON_CLOCK = "󰅐 "
+ICON_COPY = "󰆏 "
+ICON_PASTE = "󰆒 "
+ICON_DOWNLOAD = "󰇚 "
+ICON_POWER = "󰐥 "
 
 
 def get_current_lang():
@@ -1576,6 +1585,367 @@ def desktop_menu():
         elif idx == 2:
             picom_submenu()
 
+def whisper_menu():
+    import json
+    from pathlib import Path
+
+    CONFIG_FILE = os.path.expanduser("~/.config/dotfiles/whisper.json")
+    VENV_PYTHON = os.path.expanduser("~/.local/share/dotfiles-whisper/venv/bin/python")
+    DICTATE_SCRIPT = os.path.expanduser("~/.config/bspwm/scripts/whisper_dictate.py")
+    SETUP_SCRIPT = os.path.expanduser("~/dotfiles/scripts/setup_whisper.sh")
+
+    DEFAULT_CFG = {
+        "model": "large-v3-turbo",
+        "language": "auto",
+        "mode": "hybrid",
+        "idle_timeout": 300,
+        "device": "auto",
+        "post_action": "copy",
+    }
+
+    def load_cfg():
+        cfg = dict(DEFAULT_CFG)
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        cfg.update(data)
+            except Exception:
+                pass
+        return cfg
+
+    def save_cfg(cfg, apply_daemon=False):
+        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+        if apply_daemon and os.path.exists(DICTATE_SCRIPT):
+            subprocess.Popen(
+                [DICTATE_SCRIPT, "--apply-config"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+
+    def get_daemon_status():
+        if not os.path.exists(DICTATE_SCRIPT):
+            return {"running": False}
+        try:
+            out = subprocess.check_output(
+                [DICTATE_SCRIPT, "--daemon-status"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=2,
+            ).strip()
+            return json.loads(out)
+        except Exception:
+            return {"running": False}
+
+    def is_model_cached(model_name):
+        hf_hub = Path(os.environ.get("HF_HOME", Path.home() / ".cache/huggingface")) / "hub"
+        if not hf_hub.exists():
+            return False
+        key = model_name.lower()
+        suffixes = [f"-{key}"]
+        if key == "large-v3-turbo":
+            suffixes.append("-turbo")
+        for d in hf_hub.glob("models--*whisper*"):
+            name = d.name.lower()
+            if any(name.endswith(suf) for suf in suffixes):
+                snaps = d / "snapshots"
+                if snaps.exists() and any((p / "model.bin").exists() for p in snaps.iterdir() if p.is_dir()):
+                    return True
+        return False
+
+    def model_submenu():
+        models = [
+            ("tiny",           "tiny",           "~75 MB",  L({"es": "Ultra rápido · básico",       "en": "Ultra fast · basic",       "pt": "Ultra rápido · básico",       "fr": "Ultra rapide · basique",   "ru": "Очень быстрая · базовая"})),
+            ("base",           "base",           "~145 MB", L({"es": "Muy rápido · ligero",         "en": "Very fast · light",        "pt": "Muito rápido · leve",         "fr": "Très rapide · léger",      "ru": "Очень быстрая · лёгкая"})),
+            ("small",          "small",          "~480 MB", L({"es": "Equilibrado · ideal CPU",     "en": "Balanced · ideal for CPU", "pt": "Equilibrado · ideal CPU",     "fr": "Équilibré · idéal CPU",    "ru": "Баланс · идеально для CPU"})),
+            ("medium",         "medium",         "~1.5 GB", L({"es": "Intermedio · alta precisión", "en": "Mid-size · high accuracy", "pt": "Intermediário · alta prec.",  "fr": "Intermédiaire · précis",   "ru": "Средняя · высокая точность"})),
+            ("large-v3-turbo", "large-v3-turbo", "~1.6 GB", L({"es": "Recomendado · rápido ES/EN",  "en": "Recommended · fast ES/EN", "pt": "Recomendado · rápido ES/EN",  "fr": "Recommandé · rapide",      "ru": "Рекомендуется · быстрая"})),
+            ("large-v3",       "large-v3",       "~3.0 GB", L({"es": "Máxima precisión · pesado",   "en": "Max accuracy · heavy",     "pt": "Precisão máxima · pesado",    "fr": "Précision max · lourd",    "ru": "Макс. точность · тяжёлая"})),
+        ]
+        cached_tag = L({"es": "local", "en": "cached", "pt": "local", "fr": "en cache", "ru": "в кэше"})
+        model_theme = 'window { width: 700px; } listview { columns: 1; lines: 8; } element-text { font: "JetBrainsMono Nerd Font Mono 11"; }'
+        while True:
+            cfg = load_cfg()
+            curr = cfg.get("model", "large-v3-turbo")
+            options = []
+            for key, name, size, desc in models:
+                check = ICON_CHECK if curr == key else "   "
+                badge = f" <span color='#00FFB3'>[{cached_tag}]</span>" if is_model_cached(key) else ""
+                options.append(
+                    f"{check} <b>{name}</b> <span color='#888888'>({size})</span> — {desc}{badge}"
+                )
+            options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+            idx = show_rofi(
+                L({"es": "Modelo Whisper", "en": "Whisper Model", "pt": "Modelo Whisper", "fr": "Modèle Whisper", "ru": "Модель Whisper"}),
+                options,
+                markup=True,
+                theme_str=model_theme,
+            )
+            if idx == -1 or idx == len(options) - 1:
+                break
+            if 0 <= idx < len(models):
+                cfg["model"] = models[idx][0]
+                save_cfg(cfg, apply_daemon=True)
+                subprocess.Popen([
+                    "notify-send",
+                    L({"es": "Dictado Whisper", "en": "Whisper Dictation", "pt": "Ditado Whisper", "fr": "Dictée Whisper", "ru": "Диктовка Whisper"}),
+                    L({
+                        "es": f"Modelo cambiado a {models[idx][1]}",
+                        "en": f"Model changed to {models[idx][1]}",
+                        "pt": f"Modelo alterado para {models[idx][1]}",
+                        "fr": f"Modèle changé pour {models[idx][1]}",
+                        "ru": f"Модель изменена на {models[idx][1]}",
+                    }),
+                    "-i", "audio-input-microphone",
+                ])
+
+    def mode_submenu():
+        modes = [
+            ("hybrid",  ICON_BOLT, L({"es": "Híbrido (auto-descarga tras inactividad)", "en": "Hybrid (auto-unload when idle)", "pt": "Híbrido (descarrega ao ficar ocioso)", "fr": "Hybride (déchargement auto)", "ru": "Гибридный (автовыгрузка)"})),
+            ("cold",    ICON_SNOW, L({"es": "Frío (libera RAM/GPU al terminar)",        "en": "Cold (frees RAM/GPU immediately)", "pt": "Frio (libera RAM/GPU ao terminar)",   "fr": "Froid (libère RAM/GPU)",     "ru": "Холодный (сразу освобождает)"})),
+            ("instant", ICON_CLOCK, L({"es": "Instantáneo (siempre cargado)",           "en": "Instant (always loaded)",          "pt": "Instantâneo (sempre carregado)",      "fr": "Instantané (toujours prêt)", "ru": "Мгновенный (всегда в памяти)"})),
+        ]
+        timeouts = [
+            (60,  L({"es": "1 minuto",   "en": "1 minute",   "pt": "1 minuto",   "fr": "1 minute",   "ru": "1 минута"})),
+            (180, L({"es": "3 minutos",  "en": "3 minutes",  "pt": "3 minutos",  "fr": "3 minutes",  "ru": "3 минуты"})),
+            (300, L({"es": "5 minutos",  "en": "5 minutes",  "pt": "5 minutos",  "fr": "5 minutes",  "ru": "5 минут"})),
+            (900, L({"es": "15 minutos", "en": "15 minutes", "pt": "15 minutos", "fr": "15 minutes", "ru": "15 минут"})),
+        ]
+        mode_theme = 'window { width: 680px; } listview { columns: 1; lines: 8; } element-text { font: "JetBrainsMono Nerd Font Mono 11"; }'
+        while True:
+            cfg = load_cfg()
+            curr_mode = cfg.get("mode", "hybrid")
+            curr_timeout = int(cfg.get("idle_timeout", 300))
+            options = [f"{ICON_CHECK if curr_mode == m[0] else '   '} {m[1]}{m[2]}" for m in modes]
+            if curr_mode == "hybrid":
+                mins = max(1, curr_timeout // 60)
+                options.append(
+                    f"    {ICON_CLOCK}" + L({
+                        "es": f"Auto-descarga tras: {mins} min...",
+                        "en": f"Auto-unload after: {mins} min...",
+                        "pt": f"Descarregar após: {mins} min...",
+                        "fr": f"Déchargement après : {mins} min...",
+                        "ru": f"Выгрузка через: {mins} мин...",
+                    })
+                )
+            options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+            idx = show_rofi(
+                L({"es": "Modo de Carga", "en": "Loading Mode", "pt": "Modo de Carga", "fr": "Mode de chargement", "ru": "Режим загрузки"}),
+                options,
+                theme_str=mode_theme,
+            )
+            if idx == -1 or idx == len(options) - 1:
+                break
+            if 0 <= idx < len(modes):
+                cfg["mode"] = modes[idx][0]
+                save_cfg(cfg, apply_daemon=True)
+            elif curr_mode == "hybrid" and idx == len(modes):
+                t_opts = [f"{ICON_CHECK if curr_timeout == sec else '   '} {ICON_CLOCK}{lbl}" for sec, lbl in timeouts]
+                t_opts.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+                t_idx = show_rofi(
+                    L({"es": "Tiempo de inactividad", "en": "Idle Timeout", "pt": "Tempo de inatividade", "fr": "Délai d'inactivité", "ru": "Таймаут простоя"}),
+                    t_opts,
+                )
+                if 0 <= t_idx < len(timeouts):
+                    cfg["idle_timeout"] = timeouts[t_idx][0]
+                    save_cfg(cfg, apply_daemon=False)
+
+    def whisper_lang_submenu():
+        langs = [
+            ("auto", L({"es": "Auto-detectar (mezcla ES/EN/...)", "en": "Auto-detect (mixed ES/EN/...)", "pt": "Detectar automaticamente", "fr": "Détection automatique", "ru": "Автоопределение"})),
+            ("es",   "Español (ES)"),
+            ("en",   "English (EN)"),
+            ("pt",   "Português (PT)"),
+            ("fr",   "Français (FR)"),
+            ("ru",   "Русский (RU)"),
+        ]
+        while True:
+            cfg = load_cfg()
+            curr = cfg.get("language", "auto")
+            options = [f"{ICON_CHECK if curr == code else '   '} {ICON_LANG}{lbl}" for code, lbl in langs]
+            options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+            idx = show_rofi(
+                L({"es": "Idioma de Dictado", "en": "Dictation Language", "pt": "Idioma do Ditado", "fr": "Langue de dictée", "ru": "Язык диктовки"}),
+                options,
+            )
+            if idx == -1 or idx == len(options) - 1:
+                break
+            if 0 <= idx < len(langs):
+                cfg["language"] = langs[idx][0]
+                save_cfg(cfg, apply_daemon=False)
+
+    def device_submenu():
+        devices = [
+            ("auto", L({"es": "Automático (GPU CUDA si disponible, si no CPU)", "en": "Auto (GPU CUDA if available, else CPU)", "pt": "Automático (GPU CUDA ou CPU)", "fr": "Automatique (GPU CUDA ou CPU)", "ru": "Авто (GPU CUDA или CPU)"})),
+            ("cuda", L({"es": "GPU NVIDIA (CUDA · máxima velocidad)",           "en": "NVIDIA GPU (CUDA · fastest)",           "pt": "GPU NVIDIA (CUDA · mais rápido)", "fr": "GPU NVIDIA (CUDA · rapide)",   "ru": "GPU NVIDIA (CUDA · быстро)"})),
+            ("cpu",  L({"es": "Solo CPU (ahorro de batería en laptop)",         "en": "CPU only (laptop battery saver)",       "pt": "Apenas CPU (economiza bateria)",  "fr": "CPU uniquement (économie)",    "ru": "Только CPU (экономия заряда)"})),
+        ]
+        dev_theme = 'window { width: 680px; } listview { columns: 1; lines: 6; } element-text { font: "JetBrainsMono Nerd Font Mono 11"; }'
+        while True:
+            cfg = load_cfg()
+            curr = cfg.get("device", "auto")
+            options = [f"{ICON_CHECK if curr == code else '   '} {ICON_CHIP}{lbl}" for code, lbl in devices]
+            options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+            idx = show_rofi(
+                L({"es": "Dispositivo Whisper", "en": "Whisper Device", "pt": "Dispositivo Whisper", "fr": "Périphérique Whisper", "ru": "Устройство Whisper"}),
+                options,
+                theme_str=dev_theme,
+            )
+            if idx == -1 or idx == len(options) - 1:
+                break
+            if 0 <= idx < len(devices):
+                cfg["device"] = devices[idx][0]
+                save_cfg(cfg, apply_daemon=True)
+
+    menu_theme = 'window { width: 680px; } listview { columns: 1; lines: 10; } element-text { font: "JetBrainsMono Nerd Font Mono 11"; }'
+    while True:
+        cfg = load_cfg()
+        installed = os.path.exists(VENV_PYTHON)
+        st = get_daemon_status() if installed else {"running": False}
+
+        mode_names = {
+            "hybrid": L({"es": f"Híbrido ({max(1, int(cfg.get('idle_timeout', 300)) // 60)}m)", "en": f"Hybrid ({max(1, int(cfg.get('idle_timeout', 300)) // 60)}m)", "pt": f"Híbrido ({max(1, int(cfg.get('idle_timeout', 300)) // 60)}m)", "fr": f"Hybride ({max(1, int(cfg.get('idle_timeout', 300)) // 60)}m)", "ru": f"Гибридный ({max(1, int(cfg.get('idle_timeout', 300)) // 60)}м)"}),
+            "cold": L({"es": "Frío", "en": "Cold", "pt": "Frio", "fr": "Froid", "ru": "Холодный"}),
+            "instant": L({"es": "Instantáneo", "en": "Instant", "pt": "Instantâneo", "fr": "Instantané", "ru": "Мгновенный"}),
+        }
+        lang_val = "Auto" if cfg.get("language", "auto") == "auto" else str(cfg.get("language", "auto")).upper()
+        dev_names = {
+            "auto": L({"es": "Auto", "en": "Auto", "pt": "Auto", "fr": "Auto", "ru": "Авто"}),
+            "cuda": "GPU (CUDA)",
+            "cpu": "CPU",
+        }
+        post_paste = cfg.get("post_action") == "copy_paste"
+
+        options = []
+        actions = []
+
+        if not installed:
+            options.append(
+                f"{ICON_DOWNLOAD}" + L({
+                    "es": "Instalar entorno Whisper (setup_whisper.sh)",
+                    "en": "Install Whisper environment (setup_whisper.sh)",
+                    "pt": "Instalar ambiente Whisper (setup_whisper.sh)",
+                    "fr": "Installer l'environnement Whisper",
+                    "ru": "Установить окружение Whisper",
+                })
+            )
+            actions.append("install")
+
+        options.append(
+            f"{ICON_BRAIN}" + L({"es": "Modelo", "en": "Model", "pt": "Modelo", "fr": "Modèle", "ru": "Модель"})
+            + f": <b>{cfg.get('model', 'large-v3-turbo')}</b>"
+        )
+        actions.append("model")
+
+        options.append(
+            f"{ICON_BOLT}" + L({"es": "Modo de carga", "en": "Loading Mode", "pt": "Modo de carga", "fr": "Mode de chargement", "ru": "Режим загрузки"})
+            + f": <b>{mode_names.get(cfg.get('mode', 'hybrid'), 'Hybrid')}</b>"
+        )
+        actions.append("mode")
+
+        options.append(
+            f"{ICON_LANG}" + L({"es": "Idioma", "en": "Language", "pt": "Idioma", "fr": "Langue", "ru": "Язык"})
+            + f": <b>{lang_val}</b>"
+        )
+        actions.append("lang")
+
+        options.append(
+            f"{ICON_CHIP}" + L({"es": "Dispositivo", "en": "Device", "pt": "Dispositivo", "fr": "Périphérique", "ru": "Устройство"})
+            + f": <b>{dev_names.get(cfg.get('device', 'auto'), 'Auto')}</b>"
+        )
+        actions.append("device")
+
+        post_lbl = L({
+            "es": "Copiar y pegar automáticamente",
+            "en": "Copy and auto-paste",
+            "pt": "Copiar e colar automaticamente",
+            "fr": "Copier et coller automatiquement",
+            "ru": "Копировать и вставлять авто",
+        }) if post_paste else L({
+            "es": "Solo copiar al portapapeles",
+            "en": "Copy to clipboard only",
+            "pt": "Apenas copiar",
+            "fr": "Copier uniquement",
+            "ru": "Только копировать в буфер",
+        })
+        options.append(
+            f"{ICON_PASTE if post_paste else ICON_COPY}"
+            + L({"es": "Al terminar", "en": "On finish", "pt": "Ao terminar", "fr": "À la fin", "ru": "По завершении"})
+            + f": <b>{post_lbl}</b>"
+        )
+        actions.append("post_action")
+
+        if installed and st.get("running"):
+            loaded_info = f"{st.get('model') or cfg.get('model')} · {(st.get('device') or '').upper()}".strip(" ·")
+            options.append(
+                f"{ICON_POWER}"
+                + L({
+                    "es": f"Descargar modelo de memoria ahora ({loaded_info})",
+                    "en": f"Unload model from memory now ({loaded_info})",
+                    "pt": f"Descarregar modelo da memória ({loaded_info})",
+                    "fr": f"Décharger le modèle maintenant ({loaded_info})",
+                    "ru": f"Выгрузить модель из памяти ({loaded_info})",
+                })
+            )
+            actions.append("unload")
+
+        options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
+        actions.append("back")
+
+        prompt = L({
+            "es": "Dictado Whisper (Super+Shift+A)",
+            "en": "Whisper Dictation (Super+Shift+A)",
+            "pt": "Ditado Whisper (Super+Shift+A)",
+            "fr": "Dictée Whisper (Super+Shift+A)",
+            "ru": "Диктовка Whisper (Super+Shift+A)",
+        })
+        idx = show_rofi(prompt, options, markup=True, theme_str=menu_theme)
+        if idx == -1 or idx >= len(actions):
+            break
+
+        act = actions[idx]
+        if act == "back":
+            break
+        elif act == "install":
+            if os.path.exists(SETUP_SCRIPT):
+                subprocess.Popen(
+                    ["kitty", "-e", "bash", "-c", f'"{SETUP_SCRIPT}"; echo ""; read -p "Enter..."'],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            break
+        elif act == "model":
+            model_submenu()
+        elif act == "mode":
+            mode_submenu()
+        elif act == "lang":
+            whisper_lang_submenu()
+        elif act == "device":
+            device_submenu()
+        elif act == "post_action":
+            cfg["post_action"] = "copy" if post_paste else "copy_paste"
+            save_cfg(cfg, apply_daemon=False)
+        elif act == "unload":
+            subprocess.run([DICTATE_SCRIPT, "--daemon-stop"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen([
+                "notify-send",
+                L({"es": "Dictado Whisper", "en": "Whisper Dictation", "pt": "Ditado Whisper", "fr": "Dictée Whisper", "ru": "Диктовка Whisper"}),
+                L({
+                    "es": "Modelo descargado de memoria (RAM/GPU liberada)",
+                    "en": "Model unloaded from memory (RAM/GPU freed)",
+                    "pt": "Modelo descarregado da memória",
+                    "fr": "Modèle déchargé de la mémoire",
+                    "ru": "Модель выгружена из памяти",
+                }),
+                "-i", "audio-input-microphone",
+            ])
+
+
 def main_menu():
     while True:
         lang_text = L({"es": "Idioma", "en": "Language", "pt": "Idioma", "fr": "Langue", "ru": "Язык"})
@@ -1585,6 +1955,7 @@ def main_menu():
         cursor_text = L({"es": "Cursor", "en": "Cursor", "pt": "Cursor", "fr": "Curseur", "ru": "Курсор"})
         wallpaper_text = L({"es": "Fondo", "en": "Wallpaper", "pt": "Papel de Parede", "fr": "Fond d'écran", "ru": "Обои"})
         lock_text = L({"es": "Pantalla de Bloqueo", "en": "Lock Screen", "pt": "Tela de Bloqueio", "fr": "Écran de verrouillage", "ru": "Экран блокировки"})
+        whisper_text = L({"es": "Dictado (Whisper)", "en": "Dictation (Whisper)", "pt": "Ditado (Whisper)", "fr": "Dictée (Whisper)", "ru": "Диктовка (Whisper)"})
         config_text = L({"es": "Configuración", "en": "Configuration", "pt": "Configuração", "fr": "Configuration", "ru": "Настройка"})
         
         options = [
@@ -1594,7 +1965,8 @@ def main_menu():
             f"󰕮 {env_text}",
             f"{ICON_CURSOR} {cursor_text}",
             f"{ICON_WALLPAPER} {wallpaper_text}",
-            f"{ICON_LOCK} {lock_text}"
+            f"{ICON_LOCK} {lock_text}",
+            f"{ICON_WHISPER} {whisper_text}"
         ]
         
         idx = show_rofi(config_text, options)
@@ -1616,6 +1988,8 @@ def main_menu():
             wallpaper_menu()
         elif idx == 6:
             lockscreen_menu()
+        elif idx == 7:
+            whisper_menu()
         else:
             break
 
@@ -1733,6 +2107,8 @@ def main():
             camera_submenu(enabled, all_modules)
         elif sys.argv[1] == "lockscreen":
             lockscreen_menu()
+        elif sys.argv[1] == "whisper":
+            whisper_menu()
         return
     main_menu()
 
