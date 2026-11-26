@@ -208,7 +208,7 @@ setup_battery_threshold() {
 
 
 # 1. Install dependencies
-PACKAGES="bspwm sxhkd polybar picom rofi kitty zsh thunar gvfs gvfs-backends gtk2-engines-murrine gtk2-engines-pixbuf lsd bat xinput xss-lock feh scrot maim slop imagemagick libinput-tools libnotify-bin dunst arc-theme papirus-icon-theme firefox xclip xdotool python3 python3-dbus python3-gi python3-psutil python3-pip python3-setuptools gir1.2-glib-2.0 cava pavucontrol btop flameshot expect network-manager nm-connection-editor bc playerctl brightnessctl bluez blueman pipewire pipewire-pulse pipewire-alsa wireplumber libspa-0.2-bluetooth pulseaudio-utils psmisc lsof upower git wget fontconfig yad xorg xinit x11-xserver-utils dbus-x11 linux-headers-amd64 build-essential libegl1-mesa-dev libgl1-mesa-dev"
+PACKAGES="bspwm sxhkd polybar picom rofi kitty zsh thunar gvfs gvfs-backends gtk2-engines-murrine gtk2-engines-pixbuf lsd bat xinput xss-lock feh scrot maim slop imagemagick libinput-tools libnotify-bin dunst arc-theme papirus-icon-theme firefox xclip xdotool python3 python3-dbus python3-gi python3-psutil python3-pip python3-venv python3-setuptools gir1.2-glib-2.0 libxkbcommon0 libxkbcommon-x11-0 cava pavucontrol btop flameshot expect network-manager nm-connection-editor bc playerctl brightnessctl bluez blueman pipewire pipewire-pulse pipewire-alsa wireplumber libspa-0.2-bluetooth pulseaudio-utils psmisc lsof upower git wget curl fontconfig yad xorg xinit x11-xserver-utils dbus-x11 linux-headers-amd64 build-essential libegl1-mesa-dev libgl1-mesa-dev"
 
 setup_graphics() {
     log "Configuring Graphics (Hybrid or Integrated)..."
@@ -525,19 +525,24 @@ fi
 
 
 # 1.3 Install i3lock-color (replaces standard i3lock)
-if ! i3lock --version 2>&1 | grep -q "i3lock-color"; then
-    # Prefer distro package if available
-    if apt-cache search i3lock-color | grep -q "^i3lock-color"; then
+if ! i3lock --version 2>&1 | grep -qE "i3lock-color|Raymond Li|Cassandra Fox"; then
+    # Prefer distro package if available (unless IR patch is needed from source)
+    if apt-cache search i3lock-color | grep -q "^i3lock-color" && [ ! -f "$DOTFILES_DIR/face-auth/i3lock-allow-empty-retry.patch" ]; then
         log "Installing i3lock-color from apt..."
         sudo apt install -y i3lock-color
     else
         log "Installing i3lock-color from source..."
-        I3LOCK_BUILD_DEPS="autoconf gcc make pkg-config libpam0g-dev libcairo2-dev libfontconfig1-dev libxcb-composite0-dev libev-dev libx11-xcb-dev libxcb-xkb-dev libxcb-xinerama0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-util-dev libxcb-xrm-dev libxkbcommon-dev libxkbcommon-x11-dev libjpeg-dev libgif-dev"
+        I3LOCK_BUILD_DEPS="autoconf automake gcc make pkg-config libpam0g-dev libcairo2-dev libfontconfig1-dev libxcb-composite0-dev libev-dev libx11-xcb-dev libxcb-xkb-dev libxcb-xinerama0-dev libxcb-randr0-dev libxcb-image0-dev libxcb-util-dev libxcb-xrm-dev libxkbcommon-dev libxkbcommon-x11-dev libjpeg-dev libgif-dev"
         sudo apt install -y $I3LOCK_BUILD_DEPS
         I3LOCK_TMP=$(mktemp -d)
 
         if getent hosts github.com > /dev/null 2>&1; then
             if git clone --depth=1 https://github.com/Raymo111/i3lock-color.git "$I3LOCK_TMP"; then
+                if [ -f "$DOTFILES_DIR/face-auth/i3lock-allow-empty-retry.patch" ]; then
+                    log "Applying i3lock-color patch for repeated Enter IR face scan..."
+                    git -C "$I3LOCK_TMP" apply "$DOTFILES_DIR/face-auth/i3lock-allow-empty-retry.patch" || \
+                        sed -i 's/skip_repeated_empty_password = true;/skip_repeated_empty_password = ignore_empty_password;/' "$I3LOCK_TMP/i3lock.c"
+                fi
                 if (cd "$I3LOCK_TMP" && ./build.sh); then
                     sudo install -m 755 "$I3LOCK_TMP/build/i3lock" /usr/local/bin/i3lock
                     log "i3lock-color installed to /usr/local/bin/i3lock"
@@ -698,6 +703,9 @@ find "$DOTFILES_DIR/config" -type f -name "*.py" -exec chmod +x {} + 2>/dev/null
 find "$DOTFILES_DIR/bin" -type f -exec chmod +x {} + 2>/dev/null || true
 chmod +x "$DOTFILES_DIR/config/bspwm/bspwmrc" 2>/dev/null || true
 chmod +x "$DOTFILES_DIR/config/sxhkd/sxhkdrc" 2>/dev/null || true
+if [ -d "$DOTFILES_DIR/face-auth" ]; then
+    find "$DOTFILES_DIR/face-auth" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} + 2>/dev/null || true
+fi
 
 # Enable Bluetooth Service
 if command -v systemctl &> /dev/null; then
@@ -862,10 +870,10 @@ done
 
 # Initialize Keyboard Preference
 if [ ! -f "$HOME/.config/dotfiles/keyboard" ]; then
-    # Try to detect current layout and variant
-    QUERY=$(setxkbmap -query)
-    L=$(echo "$QUERY" | grep layout | awk '{print $2}')
-    V=$(echo "$QUERY" | grep variant | awk '{print $2}')
+    # Try to detect current layout and variant (safe on headless/TTY netinstall where DISPLAY is unset)
+    QUERY=$(setxkbmap -query 2>/dev/null || true)
+    L=$(echo "$QUERY" | awk '/^layout:/{print $2}')
+    V=$(echo "$QUERY" | awk '/^variant:/{print $2}')
     
     if [ -n "$V" ]; then
         CURR_LAYOUT="$L($V)"
@@ -873,7 +881,10 @@ if [ ! -f "$HOME/.config/dotfiles/keyboard" ]; then
         CURR_LAYOUT="$L"
     fi
     
-    [ -z "$L" ] && CURR_LAYOUT="us"
+    if [ -z "$L" ]; then
+        L="us"
+        CURR_LAYOUT="us"
+    fi
     
     log "Initializing default keyboard layout ($CURR_LAYOUT)..."
     mkdir -p "$HOME/.config/dotfiles"
@@ -887,6 +898,54 @@ if [ ! -f "$HOME/.config/dotfiles/keyboard" ]; then
     chmod +x "$HOME/.config/dotfiles/keyboard.sh"
 fi
 
+setup_face_auth() {
+    if [ ! -f "$DOTFILES_DIR/face-auth/install-pam.sh" ]; then
+        return 0
+    fi
+
+    # Detect if this machine has an 8-bit grayscale IR camera (GREY/Y800)
+    # Use sudo because on a fresh install the user may not be in the 'video' group yet
+    local has_ir
+    has_ir=$(sudo python3 - <<'PYEOF' 2>/dev/null || echo "0"
+import fcntl, os, struct
+from pathlib import Path
+VIDIOC_G_FMT = 0xC0D05604
+for dev in sorted(Path("/dev").glob("video*")):
+    fd = -1
+    try:
+        fd = os.open(str(dev), os.O_RDWR | os.O_NONBLOCK)
+        fmt = bytearray(208)
+        struct.pack_into("<I", fmt, 0, 1)
+        fcntl.ioctl(fd, VIDIOC_G_FMT, fmt)
+        w, h, pix = struct.unpack_from("<III", fmt, 8)
+        if w > 0 and h > 0 and struct.pack("<I", pix) in (b"GREY", b"Y800", b"Y8  "):
+            print("1")
+            break
+    except OSError:
+        pass
+    finally:
+        if fd >= 0:
+            try: os.close(fd)
+            except OSError: pass
+PYEOF
+)
+    if [ "$has_ir" = "1" ]; then
+        log "Infrared (IR) camera detected! Setting up local IR facial unlock (face-auth)..."
+        if getent hosts github.com > /dev/null 2>&1 || [ -s /opt/face-auth/models/det_500m.onnx ]; then
+            if sudo bash "$DOTFILES_DIR/face-auth/install-pam.sh"; then
+                log "IR facial unlock installed! Run 'sudo face-auth enroll' to register your face."
+            else
+                warn "IR facial unlock setup failed. You can retry later with: sudo ~/dotfiles/face-auth/install-pam.sh"
+            fi
+        else
+            warn "Network unavailable to download face-auth models. Run later: sudo ~/dotfiles/face-auth/install-pam.sh"
+        fi
+    else
+        log "No infrared (IR) camera detected. Skipping optional IR facial unlock setup."
+    fi
+}
+
 setup_battery_threshold || true
+setup_face_auth || true
 
 log "Installation complete!"

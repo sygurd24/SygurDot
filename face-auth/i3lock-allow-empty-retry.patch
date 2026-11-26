@@ -1,0 +1,13 @@
+diff --git a/i3lock.c b/i3lock.c
+index ebc3216..83ce429 100644
+--- a/i3lock.c
++++ b/i3lock.c
+@@ -905,7 +905,7 @@ static void handle_key_press(xcb_key_press_event_t *event) {
+                 return;
+             }
+             finish_input();
+-            skip_repeated_empty_password = true;
++            skip_repeated_empty_password = ignore_empty_password;
+             return;
+         default:
+             skip_repeated_empty_password = false;

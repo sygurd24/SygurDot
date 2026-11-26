@@ -1,0 +1,30 @@
+[Unit]
+Description=Hardened Local IR Face Authentication Daemon (InsightFace ONNX)
+After=local-fs.target systemd-udevd.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+Environment=FACE_AUTH_USER=sygurd
+Environment=FACE_AUTH_SOCK=/run/face-auth/face-auth.sock
+RuntimeDirectory=face-auth
+RuntimeDirectoryMode=0755
+StateDirectory=face-auth
+StateDirectoryMode=0700
+ExecStart=/opt/face-auth/venv/bin/python /opt/face-auth/face_daemon.py
+Restart=on-failure
+RestartSec=2
+Nice=5
+
+# Systemd sandboxing
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run/face-auth /var/lib/face-auth
+DevicePolicy=closed
+DeviceAllow=char-video4linux rw
+
+[Install]
+WantedBy=multi-user.target

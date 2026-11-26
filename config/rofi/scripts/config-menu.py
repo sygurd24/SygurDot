@@ -37,6 +37,7 @@ ICON_CURSOR = "󰆿 "
 ICON_WALLPAPER = "󰸉 "
 ICON_LOCK = "󰌾 "
 ICON_SCREEN = "󰹑 "
+ICON_FACE = "󰈷 "
 
 
 def get_current_lang():
@@ -1387,9 +1388,51 @@ def set_lockscreen_mode(mode):
     })
     subprocess.Popen(["notify-send", title, msg, "-i", "system-lock-screen"])
 
+def get_face_auth_enabled():
+    flag_file = os.path.expanduser("~/.config/dotfiles/face_auth_enabled")
+    if os.path.exists(flag_file):
+        try:
+            return open(flag_file).read().strip().lower() != "off"
+        except OSError:
+            pass
+    return os.path.exists("/run/face-auth/face-auth.sock")
+
+def set_face_auth_enabled(enabled):
+    flag_file = os.path.expanduser("~/.config/dotfiles/face_auth_enabled")
+    os.makedirs(os.path.dirname(flag_file), exist_ok=True)
+    with open(flag_file, "w") as f:
+        f.write("on\n" if enabled else "off\n")
+
+    title = L({
+        "es": "Pantalla de Bloqueo",
+        "en": "Lock Screen",
+        "pt": "Tela de Bloqueio",
+        "fr": "Écran de verrouillage",
+        "ru": "Экран блокировки"
+    })
+    if enabled:
+        msg = L({
+            "es": "Desbloqueo facial IR: ACTIVADO (presiona Enter en i3lock)",
+            "en": "IR Face Unlock: ENABLED (press Enter in i3lock)",
+            "pt": "Desbloqueio facial IR: ATIVADO (pressione Enter no i3lock)",
+            "fr": "Déverrouillage facial IR : ACTIVÉ (appuyez sur Entrée)",
+            "ru": "IR разблокировка лицом: ВКЛЮЧЕНА"
+        })
+    else:
+        msg = L({
+            "es": "Desbloqueo facial IR: DESACTIVADO",
+            "en": "IR Face Unlock: DISABLED",
+            "pt": "Desbloqueio facial IR: DESATIVADO",
+            "fr": "Déverrouillage facial IR : DÉSACTIVÉ",
+            "ru": "IR разблокировка лицом: ОТКЛЮЧЕНА"
+        })
+    subprocess.Popen(["notify-send", title, msg, "-i", "system-lock-screen"])
+
 def lockscreen_menu():
     while True:
         current_mode = get_current_lockscreen_mode()
+        has_face_auth = os.path.exists("/run/face-auth/face-auth.sock") or os.path.exists("/etc/systemd/system/face-auth.service")
+        face_enabled = get_face_auth_enabled() if has_face_auth else False
 
         wp_lbl = L({
             "es": "Fondo de pantalla difuminado",
@@ -1409,8 +1452,24 @@ def lockscreen_menu():
         options = [
             f"{ICON_CHECK if current_mode == 'wallpaper' else '   '} {ICON_WALLPAPER}{wp_lbl}",
             f"{ICON_CHECK if current_mode == 'screen' else '   '} {ICON_SCREEN}{screen_lbl}",
-            f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"})
         ]
+        if has_face_auth:
+            face_lbl = L({
+                "es": "Desbloqueo Facial IR: ACTIVADO",
+                "en": "IR Face Unlock: ENABLED",
+                "pt": "Desbloqueio Facial IR: ATIVADO",
+                "fr": "Déverrouillage Facial IR : ACTIVÉ",
+                "ru": "IR Распознавание лица: ВКЛ"
+            }) if face_enabled else L({
+                "es": "Desbloqueo Facial IR: DESACTIVADO",
+                "en": "IR Face Unlock: DISABLED",
+                "pt": "Desbloqueio Facial IR: DESATIVADO",
+                "fr": "Déverrouillage Facial IR : DÉSACTIVÉ",
+                "ru": "IR Распознавание лица: ВЫКЛ"
+            })
+            options.append(f"{ICON_CHECK if face_enabled else '   '} {ICON_FACE}{face_lbl}")
+
+        options.append(f"{ICON_BACK} " + L({"es": "Volver", "en": "Back", "pt": "Voltar", "fr": "Retour", "ru": "Назад"}))
 
         title = L({
             "es": "Pantalla de Bloqueo",
@@ -1428,6 +1487,8 @@ def lockscreen_menu():
             set_lockscreen_mode("wallpaper")
         elif idx == 1:
             set_lockscreen_mode("screen")
+        elif has_face_auth and idx == 2:
+            set_face_auth_enabled(not face_enabled)
 
 def picom_submenu():
     import re

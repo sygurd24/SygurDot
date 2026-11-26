@@ -63,6 +63,23 @@ else
     export LC_TIME="en_US.UTF-8"
 fi
 
+# Check if local IR facial unlock is active, enrolled, & installed in PAM
+FACE_AUTH_ACTIVE=0
+FACE_AUTH_ENABLED_FILE="$HOME/.config/dotfiles/face_auth_enabled"
+if [ -S "/run/face-auth/face-auth.sock" ] && \
+   [ -f "/run/face-auth/enrolled" ] && \
+   [ -f /etc/pam.d/i3lock ] && \
+   grep -q "pam_face_auth.so" /etc/pam.d/i3lock 2>/dev/null; then
+    if [ ! -f "$FACE_AUTH_ENABLED_FILE" ] || [ "$(tr -d '[:space:]' < "$FACE_AUTH_ENABLED_FILE")" != "off" ]; then
+        FACE_AUTH_ACTIVE=1
+        if [ "$LANGUAGE" == "es" ]; then
+            VERIF_TEXT="Escaneando..."
+        else
+            VERIF_TEXT="Scanning..."
+        fi
+    fi
+fi
+
 TMP_IMG=""
 PAUSED_DUNST=0
 
@@ -183,9 +200,11 @@ if "$I3LOCK_BIN" --version 2>&1 | grep -qE "color|Raymond Li|Cassandra Fox"; the
     if [ -n "$img" ] && [ -s "$img" ]; then
         I3LOCK_ARGS+=(--image="$img")
     fi
+    if [ "$FACE_AUTH_ACTIVE" -eq 0 ]; then
+        I3LOCK_ARGS+=(--ignore-empty-password)
+    fi
     I3LOCK_ARGS+=(
         --color="${BG}"
-        --ignore-empty-password
         --clock
         --indicator
         --radius=140
