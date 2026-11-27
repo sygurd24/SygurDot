@@ -53,7 +53,7 @@ def daemon_query(cmd: str) -> str | None:
         return None
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-            s.settimeout(4.0)
+            s.settimeout(8.0)
             s.connect(str(SOCK_PATH))
             s.sendall((cmd + "\n").encode("utf-8"))
             return s.recv(256).decode("utf-8", errors="ignore").strip()

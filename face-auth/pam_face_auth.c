@@ -40,7 +40,7 @@ static int query_face_daemon(void) {
     }
 
     struct timeval tv;
-    tv.tv_sec = 4;
+    tv.tv_sec = 8;
     tv.tv_usec = 0;
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));

@@ -164,6 +164,9 @@ class FaceAuthDaemon:
                     self.consecutive_fails = 0
                     self.lockout_until = 0.0
                     return f"OK score={score:.3f} ms={elapsed_ms}\n"
+                if reason == "overexposed_warmup":
+                    # Hardware auto-exposure was still settling from white-out; don't trigger brute-force lockout
+                    return f"FAIL {reason} fails={self.consecutive_fails}/{MAX_CONSECUTIVE_FAILS} score={score:.3f} ms={elapsed_ms}\n"
                 self.consecutive_fails += 1
                 if self.consecutive_fails >= MAX_CONSECUTIVE_FAILS:
                     self.lockout_until = time.monotonic() + LOCKOUT_SECONDS
@@ -202,7 +205,7 @@ class FaceAuthDaemon:
                 except OSError:
                     break
                 with conn:
-                    conn.settimeout(4.0)
+                    conn.settimeout(8.0)
                     peer_uid = get_peer_uid(conn)
                     if peer_uid is None or peer_uid not in (0, TARGET_UID):
                         try:

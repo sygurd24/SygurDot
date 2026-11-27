@@ -500,8 +500,14 @@ def verify_live(
     top3_threshold: float = DEFAULT_TOP3_THRESHOLD,
     required_matches: int = DEFAULT_REQUIRED_MATCHES,
     timeout_sec: float = 1.8,
+    max_warmup_timeout_sec: float = 5.5,
 ) -> Tuple[bool, float, int, str]:
-    """Capture IR frames and require 2 agreeing frames passing liveness + ArcFace checks."""
+    """Capture IR frames and require 2 agreeing frames passing liveness + ArcFace checks.
+
+    If the Chicony IR sensor starts overexposed (e.g. right after hibernate/suspend or
+    uncovering the lens), automatically extends the capture window up to
+    max_warmup_timeout_sec so hardware auto-exposure can settle in a single attempt.
+    """
     t0 = time.monotonic()
     cap = open_ir_camera(device)
     if not cap.isOpened():
@@ -512,16 +518,39 @@ def verify_live(
     valid_frames = 0
     faces_seen = 0
     last_liveness_fail = ""
+    saw_overexposed = False
+    had_normal_exposure = False
+    effective_timeout = timeout_sec
     try:
-        while (time.monotonic() - t0) < timeout_sec:
+        while (time.monotonic() - t0) < effective_timeout:
             ok, raw = cap.read()
-            if not ok:
+            if not ok or raw is None or raw.size == 0:
                 time.sleep(0.005)
                 continue
-            frame_bgr = prepare_ir_frame(raw)
+
+            raw_gray = raw if raw.ndim == 2 else (raw[:, :, 0] if raw.shape[2] == 1 else cv2.cvtColor(raw, cv2.COLOR_BGR2GRAY))
+            raw_mean = float(raw_gray.mean())
+
+            # Skip IR-OFF dark alternating frames
+            if raw_mean < 5.0:
+                continue
+
+            raw_clip = float(np.mean(raw_gray >= 250))
+            # Detect Chicony IR auto-exposure ramp (white-burned after hibernate/uncover, even when std < 5)
+            if raw_mean >= 185.0 or raw_clip >= 0.40:
+                saw_overexposed = True
+                effective_timeout = max_warmup_timeout_sec
+                if raw_clip >= 0.70:
+                    matches = 0
+                    continue
+
+            frame_bgr = prepare_ir_frame(raw_gray)
             if frame_bgr is None:
                 continue
             valid_frames += 1
+
+            if raw_mean < 185.0 and raw_clip < 0.40:
+                had_normal_exposure = True
 
             res = engine.extract_embedding(frame_bgr, score_thresh=0.60, check_liveness=True)
             if res is None:
@@ -548,7 +577,9 @@ def verify_live(
         cap.release()
 
     elapsed_ms = int((time.monotonic() - t0) * 1000)
-    if valid_frames == 0:
+    if saw_overexposed and faces_seen == 0 and not had_normal_exposure:
+        reason = "overexposed_warmup"
+    elif valid_frames == 0:
         reason = "no_ir_frames"
     elif faces_seen == 0:
         reason = f"liveness_{last_liveness_fail}" if last_liveness_fail else "no_face"
